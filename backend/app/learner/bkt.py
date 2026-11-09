@@ -22,3 +22,19 @@ def bkt_update(p, correct, params):
     new_p = posterior + (1 - posterior) * learn
 
     return new_p
+
+
+
+def label_for(p, tested=True):
+    if not tested:
+        return "untested"
+
+    if not 0 <= p <= 1:
+        raise ValueError("Probability must be between 0 and 1")
+
+    if p >= 0.8:
+        return "mastered"
+    elif p >= 0.5:
+        return "confused"
+    else:
+        return "not_mastered"

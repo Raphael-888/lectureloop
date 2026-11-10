@@ -22,6 +22,10 @@ uploads/
 *.sqlite3
 *.db
 
+# Course material (vision transcripts and PDFs) is not ours to publish
+backend/tests/fixtures/lectures/*.json
+backend/tests/fixtures/lectures/*.pdf
+
 # OS / editor
 .DS_Store
 .vscode/

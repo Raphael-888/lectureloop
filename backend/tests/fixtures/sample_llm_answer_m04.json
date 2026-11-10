@@ -1,0 +1,18 @@
+{
+  "concepts": [
+    {"id": "supervised_pipeline", "name": "Supervised learning pipeline", "summary": "The steps from problem framing and data splits through training, evaluation and deployment.", "pages": [3], "prerequisites": []},
+    {"id": "loss_vs_metric", "name": "Loss function vs evaluation metric", "summary": "A loss scores one prediction for training; a metric summarizes performance for decisions.", "pages": [4], "prerequisites": []},
+    {"id": "expected_risk", "name": "Expected risk", "summary": "The average loss of a model over the unknown data-generating distribution.", "pages": [5, 7], "prerequisites": ["loss_vs_metric"]},
+    {"id": "empirical_risk", "name": "Empirical risk", "summary": "The average loss on the training set, used as a practical stand-in for expected risk.", "pages": [6, 7, 10], "prerequisites": ["expected_risk", "loss_vs_metric"]},
+    {"id": "squared_vs_absolute_loss", "name": "Squared (L2) vs absolute (L1) loss", "summary": "Squared loss penalizes large errors quadratically and is more sensitive to outliers than absolute loss.", "pages": [8], "prerequisites": ["loss_vs_metric"]},
+    {"id": "linear_regression_1d", "name": "1D linear regression and residuals", "summary": "Fit a line with weight and bias so that residuals between predictions and targets are small.", "pages": [9], "prerequisites": []},
+    {"id": "cost_surface_convexity", "name": "Cost surface in weight space and convexity", "summary": "For linear regression the squared-loss cost is a convex quadratic bowl over the weights, so any local minimum is global.", "pages": [11, 12, 15, 16], "prerequisites": ["empirical_risk", "squared_vs_absolute_loss", "linear_regression_1d"]},
+    {"id": "gradient_descent", "name": "Gradient descent", "summary": "Repeatedly step the weights against the gradient of the cost, scaled by a learning rate.", "pages": [17, 19], "prerequisites": ["cost_surface_convexity", "empirical_risk"]},
+    {"id": "multivariate_regression", "name": "Multivariate linear regression (vectorized, bias trick)", "summary": "Stack examples into a design matrix and add a column of ones so predictions are a single matrix product.", "pages": [20, 22], "prerequisites": ["linear_regression_1d", "empirical_risk"]},
+    {"id": "normal_equation", "name": "Normal equation (closed-form solution)", "summary": "Setting the gradient of the cost to zero gives w = (X^T X)^-1 X^T y when X^T X is invertible.", "pages": [21, 22], "prerequisites": ["multivariate_regression", "cost_surface_convexity"]},
+    {"id": "polynomial_feature_map", "name": "Nonlinear regression with feature maps", "summary": "Map inputs through features such as polynomials so a model linear in its parameters can fit nonlinear curves.", "pages": [23, 25], "prerequisites": ["multivariate_regression"]},
+    {"id": "under_overfitting", "name": "Underfitting, overfitting and validation error", "summary": "As model complexity grows, training error keeps falling while validation error has a sweet spot.", "pages": [24, 26, 27], "prerequisites": ["polynomial_feature_map", "supervised_pipeline"]},
+    {"id": "classification_losses", "name": "0-1 loss and logistic (cross-entropy) loss", "summary": "0-1 loss is intuitive but not differentiable; cross-entropy is smooth and punishes confident mistakes.", "pages": [28], "prerequisites": ["loss_vs_metric"]},
+    {"id": "regression_bad_classifier", "name": "Why linear regression is a bad classifier", "summary": "Regressing on 0/1 labels gives predictions outside [0,1] and a loss that ignores the Bernoulli structure.", "pages": [29, 30, 31, 32], "prerequisites": ["multivariate_regression", "classification_losses"]}
+  ]
+}

@@ -19,7 +19,9 @@ npm-debug.log*
 
 # Uploaded lecture files and local data
 uploads/
+backend/data/
 *.sqlite3
+*.sqlite3-*
 *.db
 
 # Course material (vision transcripts and PDFs) is not ours to publish

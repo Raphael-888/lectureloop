@@ -190,3 +190,82 @@ def test_unreadable_pdf_fails_with_a_message(client):
         client.post("/api/sessions", json={"lecture_id": body["lecture_id"]}).json()["error"]["code"]
         == "lecture_not_ready"
     )
+
+
+# ---------- selected-concept review (Nov 10 product decision) ----------
+
+
+def test_concepts_response_carries_title_pages_and_overview(client, lecture_id):
+    body = client.get(f"/api/lectures/{lecture_id}/concepts").json()
+    assert body["title"] == "sorting"
+    assert body["page_count"] == 6
+    assert "Comparison model" in body["overview"]
+
+
+def test_pages_filtered_by_selected_concepts(client, lecture_id):
+    everything = client.get(f"/api/lectures/{lecture_id}/pages").json()["pages"]
+    assert [p["page"] for p in everything] == [1, 2, 3, 4, 5, 6]
+    assert everything[1]["concept_ids"] == ["comparison_model"]
+    some = client.get(f"/api/lectures/{lecture_id}/pages?concept_ids=merge_sort,quicksort").json()["pages"]
+    assert [p["page"] for p in some] == [4, 5]
+    assert "Merge sort" in some[0]["text"]
+
+
+def test_scoped_session_quizzes_only_the_selection(client, store, lecture_id):
+    r = client.post("/api/sessions", json={"lecture_id": lecture_id, "concept_ids": ["merge_sort", "quicksort"]})
+    assert r.status_code == 200, r.text
+    sid, question = r.json()["session_id"], r.json()["questions"][0]
+    assert question["concept_id"] == "quicksort"
+
+    state = client.get(f"/api/sessions/{sid}").json()
+    assert state["concept_ids"] == ["merge_sort", "quicksort"]
+    assert state["current_question"]["id"] == question["id"]
+    assert "Merge sort" in state["scope_summary"]
+    assert state["answered"] == 0 and state["done"] is False
+
+    seen = set()
+    for _ in range(20):
+        body = client.post(
+            "/api/answers",
+            json={"session_id": sid, "question_id": question["id"], "answer": right_answer(store, sid, question["id"])},
+        ).json()
+        seen.add(body["concept_id"])
+        if body["next_action"] == "done":
+            break
+        question = body["next_questions"][0]
+    assert seen == {"merge_sort", "quicksort"}
+    assert client.get(f"/api/sessions/{sid}").json()["done"] is True
+    tools = [e["tool"] for e in client.get(f"/api/sessions/{sid}/trace").json()["events"]]
+    assert tools[:4] == ["extract_concepts", "review_scope", "summarize", "generate_quiz"]
+
+
+def test_unknown_concept_id_is_rejected(client, lecture_id):
+    r = client.post("/api/sessions", json={"lecture_id": lecture_id, "concept_ids": ["nope"]})
+    assert r.status_code == 422
+    assert r.json()["error"]["code"] == "unknown_concept"
+
+
+def test_chat_answers_and_changes_the_quiz(client, store, lecture_id):
+    r = client.post("/api/sessions", json={"lecture_id": lecture_id, "concept_ids": ["merge_sort"]})
+    sid, question = r.json()["session_id"], r.json()["questions"][0]
+
+    r = client.post(f"/api/sessions/{sid}/chat", json={"message": "How does merge sort split the array?"})
+    assert r.status_code == 200, r.text
+    assert r.json()["changed"] == []
+    assert "p. 4" in r.json()["reply"]
+
+    r = client.post(f"/api/sessions/{sid}/chat", json={"message": "short answer questions please, harder"})
+    assert set(r.json()["changed"]) == {"question_type", "difficulty"}
+    assert r.json()["preferences"] == {"question_type": "short_answer", "difficulty": "harder"}
+
+    state = client.get(f"/api/sessions/{sid}").json()
+    assert [m["role"] for m in state["chat"]] == ["student", "tutor", "student", "tutor"]
+    assert state["mastery"]  # chatting graded nothing
+    assert all(m["label"] == "untested" for m in state["mastery"])
+
+    body = client.post(
+        "/api/answers",
+        json={"session_id": sid, "question_id": question["id"], "answer": right_answer(store, sid, question["id"])},
+    ).json()
+    if body["next_questions"]:
+        assert body["next_questions"][0]["type"] == "short_answer"

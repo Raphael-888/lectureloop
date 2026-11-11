@@ -64,7 +64,14 @@ class Policy:
         self.session = session
         self.max_attempts = max_attempts
         self.names = {c.id: c.name for c in lecture.concepts}
-        self.order = coverage_order(lecture.concepts)
+        # The review scope: the concepts the student selected (D's review_scope), else the whole
+        # lecture. Coverage and finishing look only at the scope; root-cause tracing may still test
+        # a prerequisite outside it, because that is where the gap usually is.
+        self.targets = list(session.targets) or [c.id for c in lecture.concepts]
+        self.order = [cid for cid in coverage_order(lecture.concepts) if cid in self.targets]
+
+    def in_scope(self, cid: str) -> bool:
+        return cid in self.targets
 
     # ---------- concept status ----------
 

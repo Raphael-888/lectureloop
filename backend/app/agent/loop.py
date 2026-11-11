@@ -75,6 +75,20 @@ class Agent:
             f"Read {lec.title or lec.filename} before quizzing",
             f"Found {len(lec.concepts)} concepts and {links} prerequisite links on {len(lec.pages)} pages",
         )
+        if s.targets:
+            chosen = ", ".join(self.names[c] for c in s.targets)
+            s.add_trace(
+                "review_scope",
+                "The student chose what to review; quiz only those concepts",
+                f"Scope: {chosen} ({len(s.targets)} of {len(lec.concepts)} concepts)",
+            )
+        if s.scope_summary:
+            n = len(self.policy.targets)
+            s.add_trace(
+                "summarize",
+                "Summarise what is being reviewed before the first question",
+                f"Summary of {n} concept{'s' if n != 1 else ''} written from the slides",
+            )
         first = self.policy.order[0]
         item = self._issue(
             first, "Coverage pass: start with the most advanced concept so gaps can be traced back"
@@ -210,7 +224,8 @@ class Agent:
         stuck = [p for p in parents if p in closed and not self.policy.mastered(p)]
         if prereq:
             state = pct(s.p[prereq]) if prereq in s.p else "untested"
-            summary = f"Unresolved prerequisite of {name}: {self.names[prereq]} ({state})"
+            outside = "" if self.policy.in_scope(prereq) else ", outside the selection"
+            summary = f"Unresolved prerequisite of {name}: {self.names[prereq]} ({state}{outside})"
             turn.observations.append(f"trace_root_cause({cid}): unresolved prerequisite {prereq} ({state})")
         elif stuck:
             # the gap is still further back, so this concept is a symptom, not a root cause
@@ -254,7 +269,15 @@ class Agent:
 
     def _issue(self, cid: str, reason: str, turn: Turn | None = None) -> QuestionItem:
         s = self.session
-        item = pick(self.store, self.lecture, s, cid, self.asker, self.settings.enable_short_answer)
+        item = pick(
+            self.store,
+            self.lecture,
+            s,
+            cid,
+            self.asker,
+            self.settings.enable_short_answer,
+            preferences=s.preferences,
+        )
         s.issued[item.id] = item
         s.current_question = item.id
         if cid in s.stack:  # returning to a waiting concept: drop it and anything above it
@@ -270,7 +293,8 @@ class Agent:
         s = self.session
         s.done = True
         s.stack = []
-        weak = [c.id for c in self.lecture.concepts if c.id in s.wrong or not self.policy.mastered(c.id)]
+        reviewed = [c.id for c in self.lecture.concepts if self.policy.in_scope(c.id) or c.id in s.p]
+        weak = [cid for cid in reviewed if cid in s.wrong or not self.policy.mastered(cid)]
         s.add_trace("export_flashcards", reason, f"Notes and flashcards ready ({len(weak)} weak concepts)")
 
     # ---------- feedback text ----------

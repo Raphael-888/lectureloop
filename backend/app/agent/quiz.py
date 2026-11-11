@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from app.agent.llm import UNTRUSTED, Asker, LLMError
 from app.agent.policy import coverage_order
 from app.agent.search import MAX_CHUNK_CHARS, tokenize
-from app.models import Lecture, QuestionItem, Session
+from app.models import Lecture, Preferences, QuestionItem, Session
 from app.schemas import Concept
 from app.store import Store
 
@@ -29,6 +29,9 @@ Rules:
    confused student would make. No "all of the above" or "none of the above". No option letters.
 4. short_answer: answerable in 1-3 sentences. Give a model answer and 2-4 key points.
 5. "page": the slide page (a number from that concept's "pages") that best supports the answer.
+6. "difficulty" in the payload, when present, says what the student asked for: "easier" means
+   recall and recognition questions; "harder" means apply-the-idea questions (a small calculation,
+   a prediction, or spotting a wrong statement), still answerable from the slides alone.
 
 Reply with JSON only:
 {{"questions": [
@@ -96,7 +99,9 @@ def _to_item(raw: object, concepts: dict[str, Concept]) -> QuestionItem | None:
     return None
 
 
-def generate(asker: Asker, lecture: Lecture, concepts: list[Concept]) -> list[QuestionItem]:
+def generate(
+    asker: Asker, lecture: Lecture, concepts: list[Concept], difficulty: str = "same"
+) -> list[QuestionItem]:
     """One model call for a few concepts. Raises LLMError if the call fails."""
     wanted = sorted({p for c in concepts for p in c.pages})
     payload = {
@@ -106,10 +111,15 @@ def generate(asker: Asker, lecture: Lecture, concepts: list[Concept]) -> list[Qu
         ],
         "other_concepts_in_lecture": [c.name for c in lecture.concepts if c not in concepts],
     }
+    if difficulty in ("easier", "harder"):
+        payload["difficulty"] = difficulty
     data = asker.ask("generate_quiz", SYSTEM, payload)
     by_id = {c.id: c for c in concepts}
     raw_items = data.get("questions") if isinstance(data.get("questions"), list) else []
-    return [item for item in (_to_item(r, by_id) for r in raw_items) if item is not None]
+    items = [item for item in (_to_item(r, by_id) for r in raw_items) if item is not None]
+    for item in items:
+        item.difficulty = difficulty if difficulty in ("easier", "harder") else "same"
+    return items
 
 
 def prefill_bank(store: Store, lecture: Lecture, asker: Asker) -> int:
@@ -146,10 +156,23 @@ def _fallback(concept: Concept) -> QuestionItem:
 
 
 def pick(
-    store: Store, lecture: Lecture, session: Session, concept_id: str, asker: Asker, short_answer: bool = True
+    store: Store,
+    lecture: Lecture,
+    session: Session,
+    concept_id: str,
+    asker: Asker,
+    short_answer: bool = True,
+    preferences: Preferences | None = None,
 ) -> QuestionItem:
-    """Next unseen question on a concept: multiple choice first, short answer to confirm."""
+    """Next unseen question on a concept: multiple choice first, short answer to confirm.
+
+    The student's preferences (set through the tutor chat) win: a wanted question type is used
+    when the bank has one, and a wanted difficulty triggers a fresh generation at that level.
+    """
     concept = lecture.concept(concept_id)
+    prefs = preferences or Preferences()
+    wanted_type = prefs.question_type if (short_answer or prefs.question_type == "multiple_choice") else None
+    wanted_level = prefs.difficulty
 
     def unseen() -> list[QuestionItem]:
         seen_prompts = {q.prompt for q in session.issued.values()}
@@ -161,17 +184,25 @@ def pick(
             and (short_answer or q.type == "multiple_choice")
         ]
 
-    candidates = unseen()
-    if not candidates:
+    def fits(q: QuestionItem) -> bool:
+        return (wanted_type is None or q.type == wanted_type) and q.difficulty == wanted_level
+
+    candidates = [q for q in unseen() if fits(q)]
+    if not candidates:  # nothing at the wanted type/level: generate at that level
         try:
-            store.add_questions(lecture.id, generate(asker, lecture, [concept]))
+            store.add_questions(lecture.id, generate(asker, lecture, [concept], wanted_level))
         except LLMError:
             pass
+        candidates = [q for q in unseen() if fits(q)]
+    if not candidates:  # fall back to whatever is there, type preference first
         candidates = unseen()
+        if wanted_type is not None:
+            candidates.sort(key=lambda q: q.type != wanted_type)
     if not candidates:
         return _fallback(concept)
 
-    first_try = session.attempts.get(concept_id, 0) == 0
-    preferred = "multiple_choice" if first_try else "short_answer"
-    candidates.sort(key=lambda q: q.type != preferred)  # stable: keeps bank order within a type
+    if wanted_type is None:
+        first_try = session.attempts.get(concept_id, 0) == 0
+        preferred = "multiple_choice" if first_try else "short_answer"
+        candidates.sort(key=lambda q: q.type != preferred)  # stable: keeps bank order within a type
     return candidates[0]

@@ -14,25 +14,35 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
 from starlette.exceptions import HTTPException
 
-from app.agent.llm import LLMError, get_llm
-from app.agent.loop import Agent, mastery_list
+from app.agent.chat import chat as tutor_chat
+from app.agent.llm import Asker, LLMError, get_llm
+from app.agent.loop import Agent, _NoLLM, mastery_list
+from app.agent.summarize import summarize
 from app.config import get_settings
 from app.errors import ApiError
+from app.learner.review import review_scope
 from app.models import (
     AnswerRequest,
     AnswerResponse,
+    ChatRequest,
+    ChatResponse,
     ConceptsResponse,
     Lecture,
+    LecturePage,
     NotesResponse,
+    PagesResponse,
     Session,
     SessionRequest,
     SessionResponse,
+    SessionState,
     TraceResponse,
     UploadResponse,
 )
 from app.output.notes import build_notes, flashcards_csv
 from app.pipeline import process_lecture
 from app.store import Store
+
+PAGE_TEXT_CHARS = 1200  # per page in GET /lectures/{id}/pages
 
 log = logging.getLogger("lectureloop.api")
 
@@ -119,18 +129,90 @@ def create_app(store: Store | None = None) -> FastAPI:
     def get_concepts(lecture_id: str):
         lecture = lecture_or_404(lecture_id)
         return ConceptsResponse(
-            lecture_id=lecture.id, status=lecture.status, concepts=lecture.concepts, error=lecture.error
+            lecture_id=lecture.id,
+            status=lecture.status,
+            concepts=lecture.concepts,
+            error=lecture.error,
+            title=lecture.title,
+            page_count=len(lecture.pages),
+            overview=lecture.overview if lecture.status == "ready" else "",
         )
+
+    @app.get("/api/lectures/{lecture_id}/pages", response_model=PagesResponse)
+    def get_pages(lecture_id: str, concept_ids: str = Query("", max_length=4000)):
+        """The slides' text, for the 'original PDF' view. concept_ids (comma-separated) filters
+        to the pages that teach those concepts; empty = every page."""
+        lecture = lecture_or_404(lecture_id)
+        if lecture.status != "ready":
+            raise ApiError(409, "lecture_not_ready", f"Lecture {lecture.id} is {lecture.status}.")
+        wanted = {cid.strip() for cid in concept_ids.split(",") if cid.strip()}
+        taught: dict[int, list[str]] = {}
+        for c in lecture.concepts:
+            for page in c.pages:
+                taught.setdefault(page, []).append(c.id)
+        pages = [
+            LecturePage(
+                page=p.page,
+                title=p.title,
+                page_type=p.page_type,
+                text=p.text[:PAGE_TEXT_CHARS],
+                concept_ids=taught.get(p.page, []),
+            )
+            for p in lecture.pages
+            if not wanted or wanted & set(taught.get(p.page, []))
+        ]
+        return PagesResponse(lecture_id=lecture.id, pages=pages)
+
+    def _asker(session: Session) -> Asker:
+        try:
+            llm = get_llm()
+        except LLMError:
+            llm = _NoLLM()
+        return Asker(llm, app.state.store, session.id)
 
     @app.post("/api/sessions", response_model=SessionResponse, response_model_exclude_none=True)
     def start_session(body: SessionRequest):
         lecture = lecture_or_404(body.lecture_id)
         if lecture.status != "ready":
             raise ApiError(409, "lecture_not_ready", f"Lecture {lecture.id} is {lecture.status}.")
-        session = Session(id=f"s_{secrets.token_hex(12)}", lecture_id=lecture.id)
+        try:
+            targets = review_scope(body.concept_ids, [c.model_dump() for c in lecture.concepts])  # D: validated
+        except ValueError as e:
+            raise ApiError(422, "unknown_concept", str(e)) from e
+        session = Session(id=f"s_{secrets.token_hex(12)}", lecture_id=lecture.id, targets=targets)
+        scope = [c for c in lecture.concepts if c.id in targets] if targets else lecture.concepts
+        session.scope_summary = summarize(_asker(session), lecture, scope)
         questions = Agent(app.state.store, lecture, session, get_settings()).start()
         app.state.store.save_session(session)
         return SessionResponse(session_id=session.id, questions=questions)
+
+    @app.get("/api/sessions/{session_id}", response_model=SessionState, response_model_exclude_none=True)
+    def get_session(session_id: str):
+        session = session_or_404(session_id)
+        lecture = lecture_or_404(session.lecture_id)
+        current = session.issued.get(session.current_question or "")
+        return SessionState(
+            session_id=session.id,
+            lecture_id=lecture.id,
+            concept_ids=session.targets or [c.id for c in lecture.concepts],
+            scope_summary=session.scope_summary,
+            preferences=session.preferences,
+            chat=session.chat,
+            current_question=current.public() if current else None,
+            mastery=mastery_list(lecture, session),
+            answered=len(session.answers),
+            done=session.done,
+        )
+
+    @app.post("/api/sessions/{session_id}/chat", response_model=ChatResponse)
+    def post_chat(session_id: str, body: ChatRequest):
+        store: Store = app.state.store
+        with store.lock(session_id):
+            session = session_or_404(session_id)
+            lecture = lecture_or_404(session.lecture_id)
+            response = tutor_chat(_asker(session), lecture, session, body.message)
+            store.save_session(session)
+        return response
 
     @app.post("/api/answers", response_model=AnswerResponse, response_model_exclude_none=True)
     def submit_answer(body: AnswerRequest):

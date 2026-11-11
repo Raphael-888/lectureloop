@@ -41,6 +41,7 @@ class Lecture(BaseModel):
     created_at: str = Field(default_factory=now_iso)
     pages: list[SlidePage] = Field(default_factory=list)
     concepts: list[Concept] = Field(default_factory=list)
+    overview: str = ""  # Markdown summary of the whole lecture for the overview page
     timings: dict[str, float] = Field(default_factory=dict)  # seconds per pipeline stage
 
     def concept(self, concept_id: str) -> Concept:
@@ -62,6 +63,7 @@ class QuestionItem(BaseModel):
     reference: str = ""  # why the answer is right / model answer (short_answer)
     key_points: list[str] = Field(default_factory=list)
     page: int | None = None
+    difficulty: Literal["easier", "same", "harder"] = "same"  # the level it was generated at
 
     def public(self) -> Question:
         return Question(
@@ -94,10 +96,27 @@ class RootCause(BaseModel):
     step: int
 
 
+class Preferences(BaseModel):
+    """How the student wants to be quizzed; set through the tutor chat, never by a graded answer."""
+
+    question_type: QuestionType | None = None  # None = the agent decides (multiple choice first)
+    difficulty: Literal["easier", "same", "harder"] = "same"
+
+
+class ChatMessage(BaseModel):
+    role: Literal["student", "tutor"]
+    text: str
+    time: str = Field(default_factory=now_iso)
+
+
 class Session(BaseModel):
     id: str
     lecture_id: str
     created_at: str = Field(default_factory=now_iso)
+    targets: list[str] = Field(default_factory=list)  # selected concept ids; empty = whole lecture
+    scope_summary: str = ""  # tutor's summary of the selected concepts, shown before the quiz
+    preferences: Preferences = Field(default_factory=Preferences)
+    chat: list[ChatMessage] = Field(default_factory=list)
     p: dict[str, float] = Field(default_factory=dict)  # tested concepts only
     attempts: dict[str, int] = Field(default_factory=dict)
     wrong: list[str] = Field(default_factory=list)  # concepts answered wrong at least once
@@ -147,15 +166,58 @@ class ConceptsResponse(BaseModel):
     status: LectureStatus
     concepts: list[Concept]
     error: str | None = None  # set when status == "failed"
+    title: str = ""
+    page_count: int = 0
+    overview: str = ""  # Markdown, empty until status == "ready"
 
 
 class SessionRequest(BaseModel):
     lecture_id: str = Field(min_length=1, max_length=64)
+    # The concepts the student dragged into the review box. Omitted or empty = the whole lecture.
+    concept_ids: list[str] = Field(default_factory=list, max_length=100)
 
 
 class SessionResponse(BaseModel):
     session_id: str
     questions: list[Question]
+
+
+class SessionState(BaseModel):
+    """GET /api/sessions/{id}: everything a page needs after a reload."""
+
+    session_id: str
+    lecture_id: str
+    concept_ids: list[str]
+    scope_summary: str
+    preferences: Preferences
+    chat: list[ChatMessage]
+    current_question: Question | None
+    mastery: list[Mastery]
+    answered: int
+    done: bool
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=2000)
+
+
+class ChatResponse(BaseModel):
+    reply: str
+    preferences: Preferences  # after this message; the quiz page shows what changed
+    changed: list[str]  # e.g. ["question_type"], empty when the message was only a question
+
+
+class LecturePage(BaseModel):
+    page: int
+    title: str
+    page_type: str
+    text: str  # the page's text layer, trimmed
+    concept_ids: list[str]  # concepts taught on this page
+
+
+class PagesResponse(BaseModel):
+    lecture_id: str
+    pages: list[LecturePage]
 
 
 class AnswerRequest(BaseModel):

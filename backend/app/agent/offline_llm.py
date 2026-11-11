@@ -27,6 +27,10 @@ class OfflineLLM:
         elif system.startswith("TASK: plan"):
             options = json.loads(user)["options"]
             out = {"choice": next(o["id"] for o in options if o["default"]), "reason": ""}
+        elif system.startswith("TASK: chat"):
+            out = self._chat(json.loads(user))
+        elif system.startswith("TASK: summarize"):
+            out = self._summarize(json.loads(user))
         else:  # C's concept-extraction prompt
             out = self._extract(user)
         return json.dumps(out)
@@ -107,3 +111,26 @@ class OfflineLLM:
             "page": slides[0]["page"] if slides else 0,
             "quote": quote,
         }
+
+    def _chat(self, payload: dict) -> dict:
+        from app.agent.chat import _rules  # the same keyword rules the no-model fallback uses
+
+        qtype, level = _rules(payload["message"])
+        if qtype or level:
+            return {"reply": "", "question_type": qtype, "difficulty": level}
+        words = set(tokenize(payload["message"]))
+        best, best_hit = None, 0
+        for slide in payload.get("slides", []):
+            for line in slide["text"].splitlines():
+                hit = len(words & set(tokenize(line)))
+                if hit > best_hit and len(line.strip()) > 20:
+                    best, best_hit = (slide["page"], line.strip()), hit
+        if best:
+            return {"reply": f"On p. {best[0]} the slides say: “{best[1][:200]}”", "question_type": None, "difficulty": None}
+        return {"reply": "The slides do not cover that directly.", "question_type": None, "difficulty": None}
+
+    def _summarize(self, payload: dict) -> dict:
+        concepts = payload["concepts"]
+        bullets = "\n".join(f"- **{c['name']}** (p. {', '.join(map(str, c['pages']))}): {c['summary']}" for c in concepts)
+        names = ", ".join(c["name"] for c in concepts)
+        return {"summary_markdown": f"This review covers {names}.\n\n{bullets}"}

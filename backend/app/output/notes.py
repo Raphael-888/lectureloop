@@ -38,10 +38,19 @@ def _answer_of(item: QuestionItem) -> str:
     return item.reference
 
 
+def reviewed_concepts(lecture: Lecture, session: Session) -> list:
+    """The concepts this session was about: the student's selection plus anything the agent
+    tested on the way (a prerequisite outside the selection), else the whole lecture."""
+    if not session.targets:
+        return list(lecture.concepts)
+    return [c for c in lecture.concepts if c.id in session.targets or c.id in session.p]
+
+
 def build_notes(lecture: Lecture, session: Session) -> NotesResponse:
     prior = params_for()["prior"]
     weak = weak_concepts(lecture, session)
     by_id = {c.id: c for c in lecture.concepts}
+    reviewed = reviewed_concepts(lecture, session)
 
     def status(cid: str) -> tuple[str, str]:
         p = session.p.get(cid, prior)
@@ -51,11 +60,11 @@ def build_notes(lecture: Lecture, session: Session) -> NotesResponse:
     def pages(cid: str) -> str:
         return ", ".join(str(p) for p in by_id[cid].pages)
 
-    mastered = sum(1 for c in lecture.concepts if session.p.get(c.id, 0.0) >= MASTERY_THRESHOLD)
+    mastered = sum(1 for c in reviewed if session.p.get(c.id, 0.0) >= MASTERY_THRESHOLD)
     lines = [
         f"# {lecture.title or lecture.filename}: review notes",
         "",
-        f"**{mastered} of {len(lecture.concepts)} concepts mastered** in {len(session.answers)} questions.",
+        f"**{mastered} of {len(reviewed)} concepts mastered** in {len(session.answers)} questions.",
         "",
     ]
 
@@ -75,8 +84,8 @@ def build_notes(lecture: Lecture, session: Session) -> NotesResponse:
             if explanation and explanation.citation:
                 lines += [f"> Slide p. {explanation.citation.page}: “{explanation.citation.quote}”", ""]
 
-    lines += ["## All concepts", ""]
-    for concept in lecture.concepts:
+    lines += ["## All concepts" if not session.targets else "## What you reviewed", ""]
+    for concept in reviewed:
         label, _ = status(concept.id)
         lines.append(f"- {_ICON[label]} **{concept.name}** (p. {pages(concept.id)}): {concept.summary}")
 
@@ -92,7 +101,7 @@ def build_notes(lecture: Lecture, session: Session) -> NotesResponse:
                     page=item.page or by_id[cid].pages[0],
                 )
             )
-    ordered = weak + [c.id for c in lecture.concepts if c.id not in weak]
+    ordered = weak + [c.id for c in reviewed if c.id not in weak]
     for cid in ordered:
         concept = by_id[cid]
         cards.append(

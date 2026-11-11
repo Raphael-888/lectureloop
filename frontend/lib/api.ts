@@ -5,9 +5,12 @@ import { USE_MOCK } from "./config";
 import * as mock from "./mock/engine";
 import type {
   AnswerResponse,
+  ChatResponse,
   ConceptsResponse,
   NotesResponse,
+  PagesResponse,
   SessionResponse,
+  SessionState,
   TraceResponse,
   UploadResponse,
 } from "./types";
@@ -69,16 +72,38 @@ export function uploadLecture(file: File | null): Promise<UploadResponse> {
   return request<UploadResponse>("/lectures", { method: "POST", body: form });
 }
 
-// 2. Concepts (poll until status is "ready").
+// 2. Concepts + overview (poll until status is "ready").
 export function getConcepts(lectureId: string): Promise<ConceptsResponse> {
   if (USE_MOCK) return mock.getConcepts(lectureId);
   return request<ConceptsResponse>(`/lectures/${enc(lectureId)}/concepts`);
 }
 
-// 3. Start a review session.
-export function startSession(lectureId: string): Promise<SessionResponse> {
-  if (USE_MOCK) return mock.startSession(lectureId);
-  return request<SessionResponse>("/sessions", postJson({ lecture_id: lectureId }));
+// 2b. Slide pages for the "original PDF" view; conceptIds filters to their pages.
+export function getPages(lectureId: string, conceptIds: string[] = []): Promise<PagesResponse> {
+  if (USE_MOCK) return mock.getPages(lectureId, conceptIds);
+  const q = conceptIds.length ? `?concept_ids=${enc(conceptIds.join(","))}` : "";
+  return request<PagesResponse>(`/lectures/${enc(lectureId)}/pages${q}`);
+}
+
+// 3. Start a review session on the selected concepts (empty = whole lecture).
+export function startSession(lectureId: string, conceptIds: string[]): Promise<SessionResponse> {
+  if (USE_MOCK) return mock.startSession(lectureId, conceptIds);
+  return request<SessionResponse>(
+    "/sessions",
+    postJson({ lecture_id: lectureId, concept_ids: conceptIds }),
+  );
+}
+
+// 3b. Everything a page needs after a reload.
+export function getSession(sessionId: string): Promise<SessionState> {
+  if (USE_MOCK) return mock.getSession(sessionId);
+  return request<SessionState>(`/sessions/${enc(sessionId)}`);
+}
+
+// 3c. Tutor chat: a question about the material, or an instruction about the quiz.
+export function chat(sessionId: string, message: string): Promise<ChatResponse> {
+  if (USE_MOCK) return mock.chat(sessionId, message);
+  return request<ChatResponse>(`/sessions/${enc(sessionId)}/chat`, postJson({ message }));
 }
 
 // 4. Submit one answer.
@@ -94,7 +119,7 @@ export function submitAnswer(
   );
 }
 
-// 5. Agent trace events after a given step.
+// 5. Agent trace events after a given step (shown in the collapsed "agent reasoning" panel).
 export function getTrace(sessionId: string, afterStep: number): Promise<TraceResponse> {
   if (USE_MOCK) return mock.getTrace(sessionId, afterStep);
   return request<TraceResponse>(`/sessions/${enc(sessionId)}/trace?after_step=${afterStep}`);

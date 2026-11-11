@@ -358,3 +358,43 @@ export const EXPLANATIONS: Record<string, { text: string; page: number; quote: s
     quote: "w* = (XᵀX)⁻¹Xᵀt",
   },
 };
+
+// Slide pages for the "original PDF" view: one entry per page of the demo lecture.
+export interface MockPage {
+  page: number;
+  title: string;
+  text: string;
+}
+
+const PAGE_TITLES: Record<number, string> = {
+  1: "CSCI 3151 · Module 4: Linear regression",
+  2: "Learning outcomes",
+  3: "The supervised learning pipeline",
+  12: "Cost surface, continued",
+  13: "Residuals on a scatter plot",
+  14: "Residuals, continued",
+  15: "Convexity: why one bowl",
+  16: "Convexity, continued",
+  18: "Choosing the learning rate",
+  19: "Gradient descent in practice",
+  22: "Normal equation: cost of inversion",
+  23: "Nonlinear regression with feature maps",
+  24: "Underfitting and overfitting",
+  25: "Polynomial features, continued",
+  26: "Validation error vs complexity",
+  27: "Picking the sweet spot",
+  28: "0-1 loss and cross-entropy",
+  29: "Why regression is a bad classifier",
+  30: "Predictions outside [0, 1]",
+  31: "Towards logistic regression",
+  32: "Summary and next week",
+};
+
+export const MOCK_PAGES: MockPage[] = Array.from({ length: MOCK_PAGE_COUNT }, (_, i) => {
+  const page = i + 1;
+  const concept = MOCK_CONCEPTS.find((c) => c.pages[0] === page);
+  const owner = MOCK_CONCEPTS.find((c) => c.pages.includes(page));
+  const title = concept?.name ?? PAGE_TITLES[page] ?? (owner ? `${owner.name}, continued` : `Slide ${page}`);
+  const body = owner?.summary ?? "Context slide: motivation, examples and transitions between topics.";
+  return { page, title, text: `${title}\n${body}` };
+});

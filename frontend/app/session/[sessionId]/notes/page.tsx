@@ -5,8 +5,8 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import ReactMarkdown from "react-markdown";
 import FlashcardDeck from "@/components/FlashcardDeck";
+import Markdown from "@/components/Markdown";
 import * as api from "@/lib/api";
 import type { NotesResponse } from "@/lib/types";
 
@@ -15,6 +15,7 @@ const pretty = (id: string) => id.replace(/_/g, " ").replace(/^\w/, (c) => c.toU
 export default function NotesPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const [notes, setNotes] = useState<NotesResponse | null>(null);
+  const [lectureId, setLectureId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -23,6 +24,10 @@ export default function NotesPage() {
       .getNotes(sessionId)
       .then((n) => !cancelled && setNotes(n))
       .catch((e) => !cancelled && setError(api.errorMessage(e)));
+    api
+      .getSession(sessionId)
+      .then((s) => !cancelled && setLectureId(s.lecture_id))
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -65,9 +70,7 @@ export default function NotesPage() {
             </ul>
           </div>
         )}
-        <div className="markdown">
-          <ReactMarkdown>{notes.summary_markdown}</ReactMarkdown>
-        </div>
+        <Markdown>{notes.summary_markdown}</Markdown>
       </section>
 
       <aside className="notes-side">
@@ -81,8 +84,13 @@ export default function NotesPage() {
             ⬇ Export to Anki (CSV)
           </button>
         </section>
+        {lectureId && (
+          <Link className="btn wide" href={`/lecture/${encodeURIComponent(lectureId)}/review`}>
+            Review other concepts
+          </Link>
+        )}
         <Link className="btn wide" href="/">
-          Review another lecture
+          Upload another lecture
         </Link>
       </aside>
     </div>

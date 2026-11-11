@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import "@xyflow/react/dist/style.css";
 import "./globals.css";
 import { USE_MOCK } from "@/lib/config";
 
@@ -17,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Link href="/" className="brand">
             <span className="brand-mark">↻</span> LectureLoop
           </Link>
-          <span className="tagline">Find the root cause, not just the wrong answer.</span>
+          <span className="tagline">Review what you&apos;re unsure about. Find the root cause, not just the wrong answer.</span>
           {USE_MOCK && <span className="badge">Mock data</span>}
         </header>
         <main>{children}</main>

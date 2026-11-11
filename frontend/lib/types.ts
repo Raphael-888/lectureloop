@@ -44,12 +44,61 @@ export interface UploadResponse {
 export interface ConceptsResponse {
   lecture_id: string;
   status: LectureStatus;
+  error?: string | null;
+  title?: string;
+  page_count?: number;
+  overview?: string; // Markdown, empty until ready
   concepts: Concept[];
+}
+
+export interface LecturePage {
+  page: number;
+  title: string;
+  page_type: string;
+  text: string;
+  concept_ids: string[];
+}
+
+export interface PagesResponse {
+  lecture_id: string;
+  pages: LecturePage[];
 }
 
 export interface SessionResponse {
   session_id: string;
   questions: Question[];
+}
+
+export type Difficulty = "easier" | "same" | "harder";
+
+export interface Preferences {
+  question_type: QuestionType | null; // null = the agent decides
+  difficulty: Difficulty;
+}
+
+export interface ChatMessage {
+  role: "student" | "tutor";
+  text: string;
+  time?: string;
+}
+
+export interface SessionState {
+  session_id: string;
+  lecture_id: string;
+  concept_ids: string[];
+  scope_summary: string; // Markdown
+  preferences: Preferences;
+  chat: ChatMessage[];
+  current_question: Question | null;
+  mastery: Mastery[];
+  answered: number;
+  done: boolean;
+}
+
+export interface ChatResponse {
+  reply: string;
+  preferences: Preferences;
+  changed: string[]; // "question_type" | "difficulty"
 }
 
 export interface Citation {

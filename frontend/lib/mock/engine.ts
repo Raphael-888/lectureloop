@@ -137,7 +137,21 @@ function issue(s: SessionData, conceptId: string): Question {
   s.issueCount[conceptId] = n + 1;
   // the student's preference (set in the chat) wins; otherwise multiple choice first
   const wanted: QuestionType | null = s.preferences.question_type;
-  const ordered = wanted ? [...bank].sort((a, b) => Number(a.type !== wanted) - Number(b.type !== wanted)) : bank;
+  let ordered = wanted ? bank.filter((b) => b.type === wanted) : bank;
+  if (ordered.length === 0) {
+    // the demo bank has no question of that type: make one from the concept summary,
+    // the way the real backend generates on demand
+    const c = byId.get(conceptId)!;
+    const keywords = (c.summary ?? "")
+      .toLowerCase()
+      .match(/[a-z]{5,}/g)
+      ?.slice(0, 3)
+      .map((w) => [w]) ?? [];
+    ordered =
+      wanted === "short_answer"
+        ? [{ type: "short_answer", prompt: `In your own words, explain this idea from the lecture: ${c.name}.`, keywords }]
+        : bank;
+  }
   const item = ordered[n % ordered.length];
   const harder = s.preferences.difficulty === "harder" ? " (apply it, don't just recall it)" : "";
   const question: Question = {

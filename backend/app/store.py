@@ -108,6 +108,19 @@ class Store:
         row = self._conn().execute("SELECT data FROM sessions WHERE id = ?", (session_id,)).fetchone()
         return Session.model_validate_json(row["data"]) if row else None
 
+    def list_sessions(self, lecture_id: str) -> list[Session]:
+        """Every session of a lecture, oldest first."""
+        rows = (
+            self._conn()
+            .execute("SELECT data FROM sessions WHERE lecture_id = ? ORDER BY rowid", (lecture_id,))
+            .fetchall()
+        )
+        return [Session.model_validate_json(r["data"]) for r in rows]
+
+    def get_question(self, question_id: str) -> QuestionItem | None:
+        row = self._conn().execute("SELECT data FROM questions WHERE id = ?", (question_id,)).fetchone()
+        return QuestionItem.model_validate_json(row["data"]) if row else None
+
     # ---------- evaluation logs ----------
 
     def log_answer(self, **row) -> None:

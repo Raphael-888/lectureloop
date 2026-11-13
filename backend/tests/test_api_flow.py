@@ -269,3 +269,66 @@ def test_chat_answers_and_changes_the_quiz(client, store, lecture_id):
     ).json()
     if body["next_questions"]:
         assert body["next_questions"][0]["type"] == "short_answer"
+
+
+# ---------- Nov 12 meeting: main page colours, bookmarks, quiz settings, end button ----------
+
+
+def test_lecture_mastery_aggregates_sessions(client, store, lecture_id):
+    before = client.get(f"/api/lectures/{lecture_id}/mastery").json()
+    assert before["sessions"] == 0
+    assert all(m["label"] == "untested" for m in before["mastery"])
+
+    r = client.post("/api/sessions", json={"lecture_id": lecture_id, "concept_ids": ["merge_sort"]})
+    sid, q = r.json()["session_id"], r.json()["questions"][0]
+    client.post("/api/answers", json={"session_id": sid, "question_id": q["id"], "answer": right_answer(store, sid, q["id"])})
+
+    after = client.get(f"/api/lectures/{lecture_id}/mastery").json()
+    assert after["sessions"] == 1
+    merge = next(m for m in after["mastery"] if m["concept_id"] == "merge_sort")
+    assert merge["label"] != "untested" and merge["p_mastery"] > 0.3
+
+
+def test_bookmarks_toggle_and_list(client, store, lecture_id):
+    r = client.post("/api/sessions", json={"lecture_id": lecture_id, "concept_ids": ["quicksort"]})
+    sid, q = r.json()["session_id"], r.json()["questions"][0]
+    assert client.get(f"/api/lectures/{lecture_id}/bookmarks").json()["items"] == []
+
+    client.post("/api/answers", json={"session_id": sid, "question_id": q["id"], "answer": "Z"})
+    r = client.post(f"/api/lectures/{lecture_id}/bookmarks", json={"question_id": q["id"], "session_id": sid})
+    assert r.status_code == 200, r.text
+    items = r.json()["items"]
+    assert len(items) == 1
+    assert items[0]["question"]["id"] == q["id"]
+    assert items[0]["concept_name"] == "Quicksort"
+    assert items[0]["your_answer"] == "Z" and items[0]["correct"] is False
+    assert "answer" not in items[0]["question"]  # never leak the key
+
+    # toggling again removes it
+    r = client.post(f"/api/lectures/{lecture_id}/bookmarks", json={"question_id": q["id"], "session_id": sid})
+    assert r.json()["items"] == []
+
+    r = client.post(f"/api/lectures/{lecture_id}/bookmarks", json={"question_id": "nope", "session_id": sid})
+    assert r.status_code == 404
+
+
+def test_preferences_endpoint_and_finish(client, store, lecture_id):
+    r = client.post("/api/sessions", json={"lecture_id": lecture_id, "concept_ids": ["merge_sort", "quicksort"]})
+    sid, q = r.json()["session_id"], r.json()["questions"][0]
+
+    r = client.patch(f"/api/sessions/{sid}/preferences", json={"question_type": "short_answer", "difficulty": "harder"})
+    assert r.status_code == 200, r.text
+    assert r.json()["preferences"] == {"question_type": "short_answer", "difficulty": "harder"}
+    r = client.patch(f"/api/sessions/{sid}/preferences", json={"clear_question_type": True})
+    assert r.json()["preferences"]["question_type"] is None
+
+    r = client.post(f"/api/sessions/{sid}/finish")
+    assert r.status_code == 200
+    assert r.json()["done"] is True and r.json()["current_question"] is None
+    tools = [e["tool"] for e in client.get(f"/api/sessions/{sid}/trace").json()["events"]]
+    assert tools[-1] == "finish" and "preferences" in tools
+    # answering after the end is refused
+    r = client.post("/api/answers", json={"session_id": sid, "question_id": q["id"], "answer": "A"})
+    assert r.status_code in (409, 422)
+    # notes still work
+    assert client.get(f"/api/sessions/{sid}/notes").status_code == 200

@@ -168,3 +168,19 @@ def test_chat_back_to_multiple_choice(store):
     r = chat(Asker(OfflineLLM(), store, session.id), lecture, session, "actually multiple choice is fine")
     assert r.changed == ["question_type"]
     assert session.preferences.question_type == "multiple_choice"
+
+
+# ---------- Nov 12: starred questions come first in later sessions ----------
+
+
+def test_starred_question_is_asked_first_next_time(store):
+    from app.models import Bookmark
+
+    lecture = make_lecture()
+    session, agent, q1 = start(store, lecture, ["merge_sort"])
+    bank = store.list_questions(lecture.id, "merge_sort")
+    assert len(bank) >= 2 and bank[0].id == q1.id  # a fresh session starts at the top of the bank
+
+    lecture.bookmarks.append(Bookmark(question_id=bank[-1].id, session_id=session.id))
+    _, _, q_starred = start(store, lecture, ["merge_sort"])
+    assert q_starred.id == bank[-1].id

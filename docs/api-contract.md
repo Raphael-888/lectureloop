@@ -35,7 +35,8 @@ Base URL: `/api`. All bodies are JSON unless noted. Every error, whatever the st
   "reason": "Gradient descent answered wrong; check whether a prerequisite is the real gap",
   "summary": "Unresolved prerequisite of Gradient descent: Cost surface and convexity (untested)" }
 // tool: "extract_concepts" | "review_scope" | "summarize" | "generate_quiz" | "grade_answer" |
-//       "update_mastery" | "trace_root_cause" | "search_slides" | "explain" | "chat" | "export_flashcards"
+//       "update_mastery" | "trace_root_cause" | "search_slides" | "explain" | "chat" | "preferences" |
+//       "finish" | "export_flashcards"
 // step starts at 1 and has no gaps. "reason" is why the agent made the call; when the model
 // chose the step, it is the model's own one-sentence reason.
 ```
@@ -68,6 +69,36 @@ Errors: `413 file_too_large`, `415 unsupported_file_type` (wrong extension or no
 ```
 
 Errors: `404 lecture_not_found`.
+
+## 2a. Lecture-wide mastery (colours the concept boxes on the main page)
+
+`GET /api/lectures/{lecture_id}/mastery`
+
+```json
+{ "lecture_id": "l_2956...", "sessions": 3,
+  "mastery": [ { "concept_id": "gradient_descent", "p_mastery": 0.88, "label": "mastered" } ] }
+// For each concept, the most recent session that tested it wins. Labels (Nov 12 sketch):
+//   untested = 未复习 (no colour) · not_mastered = 复习不足 (red) · confused = 复习尚可 (green) · mastered = 复习完成 (blue)
+```
+
+## 2c. Bookmarks (the student's "mistake book")
+
+`GET /api/lectures/{lecture_id}/bookmarks` · `POST /api/lectures/{lecture_id}/bookmarks`
+
+```json
+// POST request: toggles the star on one question (starred -> unstarred and back)
+{ "question_id": "q_3576ab0b56fa", "session_id": "s_8fd2..." }
+// response (both routes), newest first
+{ "lecture_id": "l_2956...",
+  "items": [ { "question": { /* Question, no answer key */ }, "concept_name": "Gradient descent",
+               "your_answer": "A", "correct": false, "added_at": "...", "session_id": "s_8fd2..." } ] }
+```
+
+Starred questions are kept per lecture and **asked first** in later sessions on that concept
+(`quiz.pick`), so the mistake book feeds the next quiz, as decided on Nov 12. The main page's
+star button shows this list (empty state when nothing is starred).
+
+Errors: `404 lecture_not_found`, `404 question_not_found`.
 
 ## 2b. Slide pages (the "original PDF" view)
 
@@ -124,6 +155,20 @@ Errors: `404 lecture_not_found`, `409 lecture_not_ready`, `422 unknown_concept`.
 
 The pick-concepts page shows `scope_summary` and the chat; the quiz page loads
 `current_question` from here, so a page refresh never loses the question.
+
+## 3d. Quiz settings (the type picker on the quiz page) and ending early
+
+`PATCH /api/sessions/{session_id}/preferences`
+
+```json
+// any subset; clear_question_type: true = back to "the agent decides"
+{ "question_type": "short_answer", "difficulty": "harder", "clear_question_type": false }
+// response: the SessionState of 3b
+```
+
+`POST /api/sessions/{session_id}/finish` — the "End" button. Marks the session done, keeps the
+mastery reached so far (it still counts in 2a), trace gets a `finish` event, notes remain
+available. Response: SessionState. Answers after this get `409 question_not_active`.
 
 ## 3c. Tutor chat
 
@@ -224,6 +269,19 @@ final mastery, lecture processing times, and model usage per tool. D uses this f
 | `summarize(asker, lecture, concepts)` | A/B | `app/agent/summarize.py` | Markdown summary of some concepts; composed from the graph without a model |
 | `search_pages(pages, query, k, prefer)` | B (fallback) | `app/agent/search.py` | keyword BM25; replace with C's vector search, same return shape |
 | `build_notes(lecture, session)`, `flashcards_csv(notes)` | B (fallback) | `app/output/notes.py` | built from stored data, no model call |
+
+## Decisions (Nov 11 meeting + sketch: the "exploded" main page)
+
+- **No lecture overview page.** After parsing, the concepts are scattered over the whole page
+  ("exploded"); that page is the main page. `overview` in §2 stays in the schema but is no longer
+  generated or shown.
+- **Click to select, confirm, review.** Drag-and-drop is gone (works on phones too). Confirming
+  creates the session (§3); the review page shows the title "A & B", the scope summary, the chat,
+  a PDF drawer (§2b, split view) and "Start quiz".
+- **Quiz page**: back link, a star on each question (§2c), a question-type / difficulty picker
+  (§3d), the chat as a floating box, "End" (§3d) returns to the main page.
+- **Main page colours** come from §2a; the star button opens the bookmarks.
+- Agent trace stays hidden (collapsed), still recorded.
 
 ## Decisions (Nov 10 meeting: selected-concept review)
 

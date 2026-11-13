@@ -8,7 +8,6 @@ from pathlib import Path
 
 from app.agent.llm import LLM, Asker, LLMError, Metered, get_llm
 from app.agent.quiz import prefill_bank
-from app.agent.summarize import summarize
 from app.concepts.extract import ExtractionError, extract_graph
 from app.config import Settings
 from app.models import Lecture, SlidePage
@@ -56,10 +55,6 @@ def _build(lecture: Lecture, pdf_path: Path, settings: Settings, llm: LLM, store
         raise LectureRejected("The agent could not build a valid concept graph from these slides.") from e
     lecture.concepts = graph.concepts
     lecture.timings["extract_s"] = round(time.perf_counter() - started, 2)
-
-    started = time.perf_counter()
-    lecture.overview = summarize(Asker(llm, store, lecture.id), lecture, lecture.concepts)
-    lecture.timings["overview_s"] = round(time.perf_counter() - started, 2)
 
 
 def process_lecture(

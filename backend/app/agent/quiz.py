@@ -205,4 +205,8 @@ def pick(
         first_try = session.attempts.get(concept_id, 0) == 0
         preferred = "multiple_choice" if first_try else "short_answer"
         candidates.sort(key=lambda q: q.type != preferred)  # stable: keeps bank order within a type
+    # The student's saved questions ("mistake book") come first: a question they starred in an
+    # earlier session is the best evidence of what to check again.
+    starred = {b.question_id for b in lecture.bookmarks}
+    candidates.sort(key=lambda q: q.id not in starred)
     return candidates[0]

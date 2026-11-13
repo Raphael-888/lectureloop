@@ -41,7 +41,8 @@ class Lecture(BaseModel):
     created_at: str = Field(default_factory=now_iso)
     pages: list[SlidePage] = Field(default_factory=list)
     concepts: list[Concept] = Field(default_factory=list)
-    overview: str = ""  # Markdown summary of the whole lecture for the overview page
+    overview: str = ""  # Markdown summary of the whole lecture (unused by the UI since Nov 12)
+    bookmarks: list["Bookmark"] = Field(default_factory=list)  # the student's saved questions
     timings: dict[str, float] = Field(default_factory=dict)  # seconds per pipeline stage
 
     def concept(self, concept_id: str) -> Concept:
@@ -195,6 +196,47 @@ class SessionState(BaseModel):
     mastery: list[Mastery]
     answered: int
     done: bool
+
+
+class Bookmark(BaseModel):
+    """A question the student starred during a quiz (the 'mistake book'); kept per lecture."""
+
+    question_id: str
+    session_id: str
+    added_at: str = Field(default_factory=now_iso)
+
+
+class BookmarkRequest(BaseModel):
+    question_id: str = Field(min_length=1, max_length=128)
+    session_id: str = Field(min_length=1, max_length=64)
+
+
+class BookmarkItem(BaseModel):
+    question: Question
+    concept_name: str
+    your_answer: str | None = None  # what the student answered in that session, if anything
+    correct: bool | None = None
+    added_at: str
+    session_id: str
+
+
+class BookmarksResponse(BaseModel):
+    lecture_id: str
+    items: list[BookmarkItem]
+
+
+class LectureMastery(BaseModel):
+    """Mastery across every session of a lecture: colours the concept boxes on the main page."""
+
+    lecture_id: str
+    mastery: list[Mastery]
+    sessions: int
+
+
+class PreferencesUpdate(BaseModel):
+    question_type: QuestionType | None = None
+    difficulty: Literal["easier", "same", "harder"] | None = None
+    clear_question_type: bool = False  # back to "the agent decides"
 
 
 class ChatRequest(BaseModel):

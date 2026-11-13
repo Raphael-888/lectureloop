@@ -5,7 +5,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import * as api from "@/lib/api";
-import { groupConcepts } from "@/lib/groups";
 import type { ConceptsResponse } from "@/lib/types";
 
 export function useLecture(lectureId: string) {
@@ -32,11 +31,10 @@ export function useLecture(lectureId: string) {
   }, [lectureId]);
 
   const concepts = useMemo(() => data?.concepts ?? [], [data]);
-  const blocks = useMemo(() => groupConcepts(concepts), [concepts]);
   const nameOf = useMemo(() => {
     const names = new Map(concepts.map((c) => [c.id, c.name]));
     return (id: string) => names.get(id) ?? id;
   }, [concepts]);
 
-  return { lecture: data, concepts, blocks, nameOf, error };
+  return { lecture: data, concepts, nameOf, error };
 }

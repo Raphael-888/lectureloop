@@ -134,3 +134,31 @@ export interface NotesResponse {
   weak_concepts: string[];
   flashcards: Flashcard[];
 }
+
+// ---------- Nov 12: main page colours, bookmarks, quiz settings ----------
+
+export interface LectureMastery {
+  lecture_id: string;
+  mastery: Mastery[];
+  sessions: number;
+}
+
+export interface BookmarkItem {
+  question: Question;
+  concept_name: string;
+  your_answer?: string | null;
+  correct?: boolean | null;
+  added_at: string;
+  session_id: string;
+}
+
+export interface BookmarksResponse {
+  lecture_id: string;
+  items: BookmarkItem[];
+}
+
+export interface PreferencesUpdate {
+  question_type?: QuestionType;
+  difficulty?: Difficulty;
+  clear_question_type?: boolean;
+}

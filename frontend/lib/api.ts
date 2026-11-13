@@ -5,10 +5,13 @@ import { USE_MOCK } from "./config";
 import * as mock from "./mock/engine";
 import type {
   AnswerResponse,
+  BookmarksResponse,
   ChatResponse,
   ConceptsResponse,
+  LectureMastery,
   NotesResponse,
   PagesResponse,
+  PreferencesUpdate,
   SessionResponse,
   SessionState,
   TraceResponse,
@@ -85,6 +88,26 @@ export function getPages(lectureId: string, conceptIds: string[] = []): Promise<
   return request<PagesResponse>(`/lectures/${enc(lectureId)}/pages${q}`);
 }
 
+// 2a. Mastery across every session of the lecture (colours the concept boxes).
+export function getLectureMastery(lectureId: string): Promise<LectureMastery> {
+  if (USE_MOCK) return mock.getLectureMastery(lectureId);
+  return request<LectureMastery>(`/lectures/${enc(lectureId)}/mastery`);
+}
+
+// 2c. Bookmarks ("mistake book"): list, and toggle the star on one question.
+export function getBookmarks(lectureId: string): Promise<BookmarksResponse> {
+  if (USE_MOCK) return mock.getBookmarks(lectureId);
+  return request<BookmarksResponse>(`/lectures/${enc(lectureId)}/bookmarks`);
+}
+
+export function toggleBookmark(lectureId: string, questionId: string, sessionId: string): Promise<BookmarksResponse> {
+  if (USE_MOCK) return mock.toggleBookmark(lectureId, questionId, sessionId);
+  return request<BookmarksResponse>(
+    `/lectures/${enc(lectureId)}/bookmarks`,
+    postJson({ question_id: questionId, session_id: sessionId }),
+  );
+}
+
 // 3. Start a review session on the selected concepts (empty = whole lecture).
 export function startSession(lectureId: string, conceptIds: string[]): Promise<SessionResponse> {
   if (USE_MOCK) return mock.startSession(lectureId, conceptIds);
@@ -98,6 +121,21 @@ export function startSession(lectureId: string, conceptIds: string[]): Promise<S
 export function getSession(sessionId: string): Promise<SessionState> {
   if (USE_MOCK) return mock.getSession(sessionId);
   return request<SessionState>(`/sessions/${enc(sessionId)}`);
+}
+
+// 3d. The question-type / difficulty picker, and the End button.
+export function setPreferences(sessionId: string, update: PreferencesUpdate): Promise<SessionState> {
+  if (USE_MOCK) return mock.setPreferences(sessionId, update);
+  return request<SessionState>(`/sessions/${enc(sessionId)}/preferences`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(update),
+  });
+}
+
+export function finishSession(sessionId: string): Promise<SessionState> {
+  if (USE_MOCK) return mock.finishSession(sessionId);
+  return request<SessionState>(`/sessions/${enc(sessionId)}/finish`, { method: "POST" });
 }
 
 // 3c. Tutor chat: a question about the material, or an instruction about the quiz.

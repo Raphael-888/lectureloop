@@ -1,6 +1,6 @@
-// The 4-step strip in the header: Upload → Overview → Pick → Quiz.
+// The 4-step strip in the header: Upload → Concepts → Review → Quiz.
 
-const STEPS = ["Upload", "Overview", "Pick concepts", "Quiz"];
+const STEPS = ["Upload", "Concepts", "Review", "Quiz"];
 
 export default function StepBar({ current }: { current: 1 | 2 | 3 | 4 }) {
   return (

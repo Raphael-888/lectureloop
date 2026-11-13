@@ -109,8 +109,8 @@ export default function UploadPage() {
       </section>
 
       <ol className="steps-hint">
-        <li><strong>Overview</strong> — the lecture as a map of concepts</li>
-        <li><strong>Pick</strong> — drag the ones you&apos;re unsure about into the review box</li>
+        <li><strong>Concepts</strong> — the lecture bursts into its concepts, coloured by what you know</li>
+        <li><strong>Pick</strong> — click the ones you&apos;re unsure about and confirm</li>
         <li><strong>Quiz</strong> — the tutor tests you, finds the root cause of each mistake and re-teaches it</li>
       </ol>
     </div>

@@ -300,3 +300,112 @@ main { padding: 24px 32px 48px; max-width: 1440px; margin: 0 auto; }
 .flashcard-side { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--primary); font-weight: 600; }
 .flashcard-text { font-size: 1rem; }
 .deck-nav { display: flex; justify-content: space-between; align-items: center; }
+
+/* ======================= Nov 12 redesign ======================= */
+
+/* ---------- exploded concept cloud ---------- */
+.cloud-card { overflow: hidden; }
+.cloud { position: relative; width: 100%; }
+.cloud-box {
+  position: absolute; transform: translate(-50%, -50%) rotate(var(--rot, 0deg));
+  width: 190px; max-width: 42%; min-height: 64px; padding: 10px 12px 10px 34px;
+  border-radius: 12px; border: 1.5px solid var(--line-strong); background: #fff; color: var(--text);
+  text-align: left; cursor: pointer; font: inherit; box-shadow: 0 1px 2px rgba(23, 32, 46, 0.06);
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+.cloud-box:hover:not(:disabled) { transform: translate(-50%, -50%) rotate(0deg) scale(1.04); box-shadow: 0 6px 18px rgba(23, 32, 46, 0.12); z-index: 2; }
+.cloud-box:disabled { cursor: default; opacity: 0.7; }
+.cloud-box.on { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft), 0 6px 18px rgba(42, 91, 215, 0.18); z-index: 3; }
+.cloud-check {
+  position: absolute; left: 10px; top: 12px; width: 18px; height: 18px; border-radius: 5px;
+  border: 1.5px solid var(--line-strong); background: #fff; font-size: 12px; line-height: 15px; text-align: center; color: #fff;
+}
+.cloud-box.on .cloud-check { background: var(--primary); border-color: var(--primary); }
+.cloud-name { display: block; font-weight: 600; font-size: 0.9rem; line-height: 1.25; }
+.cloud-meta { display: block; font-size: 0.7rem; color: var(--muted); margin-top: 3px; }
+/* sketch colours: red = needs work, green = getting there, blue = mastered */
+.cloud-box.m-not_mastered { background: #fde8e8; border-color: #f0a8a8; }
+.cloud-box.m-confused { background: #e7f6ec; border-color: #9ad4ae; }
+.cloud-box.m-mastered { background: #dbe7ff; border-color: #8fb0f0; }
+.cloud-box.m-not_mastered .cloud-meta { color: #7f1d1d; }
+.cloud-box.m-confused .cloud-meta { color: #14532d; }
+.cloud-box.m-mastered .cloud-meta { color: #1d44a8; }
+.cloud-box.burst { animation: burst 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.15) both; animation-delay: var(--delay, 0s); }
+@keyframes burst {
+  from { opacity: 0; transform: translate(calc(-50% + var(--dx, 0%)), calc(-50% + var(--dy, 0%))) rotate(var(--rot, 0deg)) scale(0.2); }
+  to { opacity: 1; transform: translate(-50%, -50%) rotate(var(--rot, 0deg)) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) { .cloud-box.burst { animation: none; } }
+@media (max-width: 720px) { .cloud-box { width: 150px; padding-left: 30px; } .cloud-name { font-size: 0.8rem; } }
+
+.legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.75rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.swatch { width: 12px; height: 12px; border-radius: 3px; border: 1.5px solid var(--line-strong); background: #fff; display: inline-block; }
+.swatch.m-not_mastered { background: #fde8e8; border-color: #f0a8a8; }
+.swatch.m-confused { background: #e7f6ec; border-color: #9ad4ae; }
+.swatch.m-mastered { background: #dbe7ff; border-color: #8fb0f0; }
+
+/* ---------- confirm bar ---------- */
+.confirm-bar {
+  position: sticky; bottom: 16px; z-index: 5;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  padding: 14px 18px; border-radius: 14px; background: var(--ink); color: #fff;
+  box-shadow: 0 12px 30px rgba(23, 32, 46, 0.25); animation: fadein 0.25s;
+}
+.confirm-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.confirm-text .muted { color: #c7cdd6; }
+.confirm-bar .btn { border-color: #3a4557; background: #273040; color: #fff; }
+.confirm-bar .btn.primary { background: var(--primary); border-color: var(--primary); }
+
+/* ---------- drawer (saved questions) ---------- */
+.drawer-backdrop { position: fixed; inset: 0; background: rgba(23, 32, 46, 0.35); z-index: 20; display: flex; justify-content: flex-end; }
+.drawer { width: min(440px, 100%); height: 100%; background: var(--card); padding: 20px; overflow-y: auto; box-shadow: -8px 0 30px rgba(0,0,0,0.15); animation: slidein 0.25s; }
+@keyframes slidein { from { transform: translateX(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+.drawer-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 40px 10px; }
+.bookmark-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.bookmark { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.bookmark-top { display: flex; gap: 6px; flex-wrap: wrap; }
+.bookmark-prompt { font-weight: 500; font-size: 0.925rem; }
+.bookmark .row { margin-top: 6px; }
+.pill.ok { background: var(--ok-bg); color: #14532d; }
+
+/* ---------- review page ---------- */
+.review-narrow { max-width: 820px; }
+.review-main { display: flex; flex-direction: column; min-width: 0; }
+.sticky-cta { position: sticky; bottom: 16px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; box-shadow: 0 8px 24px rgba(23, 32, 46, 0.1); margin-top: 8px; }
+
+.splitpane { display: grid; align-items: start; gap: 0; }
+.splitpane-left, .splitpane-right { min-width: 0; }
+.splitpane-right { padding-left: 10px; }
+.splitpane-divider { width: 10px; align-self: stretch; cursor: col-resize; position: relative; }
+.splitpane-divider::after { content: ""; position: absolute; top: 0; bottom: 0; left: 4px; width: 2px; background: var(--line-strong); border-radius: 2px; }
+.splitpane-divider:hover::after { background: var(--primary); }
+@media (max-width: 900px) { .splitpane { grid-template-columns: 1fr !important; } .splitpane-divider { display: none; } .splitpane-right { padding-left: 0; } }
+
+.pdf-pane { max-height: calc(100vh - 220px); overflow-y: auto; }
+.pdf-stack { display: flex; flex-direction: column; gap: 14px; }
+.pdf-sheet { border: 1.5px solid var(--line); border-radius: 10px; background: #fbfbfd; padding: 14px 16px; aspect-ratio: 16 / 10; overflow: hidden; display: flex; flex-direction: column; }
+.pdf-sheet.hit { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+.pdf-sheet-head { display: flex; justify-content: space-between; gap: 8px; font-size: 0.75rem; color: var(--muted); margin-bottom: 6px; }
+.pdf-sheet-title { font-weight: 600; font-size: 1rem; margin-bottom: 6px; }
+.pdf-sheet-line { margin: 0 0 3px; font-size: 0.8rem; line-height: 1.4; color: #3a4557; }
+
+/* ---------- quiz page ---------- */
+.quiz-page { max-width: 820px; padding-bottom: 90px; }
+.star { background: none; border: 1px solid var(--line-strong); border-radius: 999px; padding: 4px 12px; font: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; color: #3a4557; margin-left: auto; }
+.star.on { background: var(--warn-bg); border-color: #e8c877; color: #713f12; }
+
+.menu { position: relative; }
+.menu-panel { position: absolute; right: 0; top: calc(100% + 6px); z-index: 10; width: 240px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px; box-shadow: 0 12px 30px rgba(23, 32, 46, 0.15); display: flex; flex-direction: column; gap: 2px; }
+.menu-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; padding: 6px 8px 2px; }
+.menu-item { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 8px; font-size: 0.9rem; cursor: pointer; }
+.menu-item:hover { background: #f4f5f8; }
+.menu-foot { padding: 6px 8px 2px; }
+
+.floating { position: fixed; right: 20px; bottom: 20px; z-index: 15; }
+.floating-btn { min-height: 48px; padding: 0 18px; border-radius: 999px; border: 0; background: var(--ink); color: #fff; font: inherit; font-weight: 600; cursor: pointer; box-shadow: 0 10px 24px rgba(23, 32, 46, 0.3); }
+.floating-btn:hover { background: #273040; }
+.floating-panel { position: relative; width: min(400px, calc(100vw - 32px)); animation: fadein 0.2s; }
+.floating-panel .card { margin-bottom: 0; box-shadow: 0 16px 40px rgba(23, 32, 46, 0.25); }
+.floating-close { position: absolute; top: 10px; right: 12px; z-index: 1; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line-strong); background: #fff; cursor: pointer; font: inherit; }
+.floating-panel .card-head { padding-right: 40px; }

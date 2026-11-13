@@ -1,6 +1,6 @@
 "use client";
 
-// The "original PDF" view: one card per slide page, built from the page's text layer.
+// The "original PDF" view: slide pages stacked vertically, built from each page's text layer.
 // (Page images are not served yet; see docs/api-contract.md §2b.)
 
 import type { LecturePage } from "@/lib/types";
@@ -23,28 +23,25 @@ export default function PdfPages({ pages, highlight, nameOf, loading }: Props) {
   if (pages.length === 0) return <p className="muted">No pages to show.</p>;
 
   return (
-    <div className="pdf-grid">
+    <div className="pdf-stack">
       {pages.map((p) => {
         const hit = highlight && p.concept_ids.some((id) => highlight.has(id));
-        const lines = p.text.split("\n").filter((l) => l.trim()).slice(0, 6);
+        const lines = p.text.split("\n").filter((l) => l.trim());
+        const body = p.title && lines[0]?.trim() === p.title.trim() ? lines.slice(1) : lines;
         return (
-          <article key={p.page} className={`pdf-page ${hit ? "hit" : ""}`}>
-            <div className="pdf-page-paper">
-              <div className="pdf-page-title">{p.title || `Slide ${p.page}`}</div>
-              {lines.slice(p.title ? 1 : 0).map((l, i) => (
-                <div key={i} className="pdf-page-line">
-                  {l}
-                </div>
-              ))}
-            </div>
-            <div className="pdf-page-meta">
+          <article key={p.page} className={`pdf-sheet ${hit ? "hit" : ""}`}>
+            <div className="pdf-sheet-head">
               <span>Page {p.page}</span>
               {p.concept_ids.length > 0 && (
-                <span className="muted" title={p.concept_ids.map(nameOf).join(", ")}>
-                  {p.concept_ids.length === 1 ? nameOf(p.concept_ids[0]) : `${p.concept_ids.length} concepts`}
-                </span>
+                <span className="muted">{p.concept_ids.map(nameOf).join(" · ")}</span>
               )}
             </div>
+            <div className="pdf-sheet-title">{p.title || `Slide ${p.page}`}</div>
+            {body.slice(0, 14).map((l, i) => (
+              <p key={i} className="pdf-sheet-line">
+                {l}
+              </p>
+            ))}
           </article>
         );
       })}

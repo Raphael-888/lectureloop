@@ -85,8 +85,8 @@ export default function NotesPage() {
           </button>
         </section>
         {lectureId && (
-          <Link className="btn wide" href={`/lecture/${encodeURIComponent(lectureId)}/review`}>
-            Review other concepts
+          <Link className="btn wide" href={`/lecture/${encodeURIComponent(lectureId)}`}>
+            Back to all concepts
           </Link>
         )}
         <Link className="btn wide" href="/">

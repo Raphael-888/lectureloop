@@ -17,25 +17,24 @@ To use the real backend, copy `.env.example` to `.env.local`, set `NEXT_PUBLIC_U
 start the FastAPI server on `BACKEND_URL` (see `backend/README.md`; `LLM_PROVIDER=offline` works
 without a key), and restart `npm run dev`.
 
-## Flow (Nov 10 product decision: review what you pick)
+## Flow (Nov 12 meeting + sketch)
 
 | Route | Page |
 | --- | --- |
 | `/` | 1 · Upload slides, wait for processing |
-| `/lecture/[lectureId]` | 2 · Overview: summary + the concepts as a tree in lecture order |
-| `/lecture/[lectureId]/review` | 3 · Pick concepts: mind map / original PDF on the left, drag-and-drop review box on the right; after Submit: AI summary + tutor chat + Next |
-| `/session/[sessionId]` | 4 · Quiz on the selected concepts, tutor chat (ask, or change question type / difficulty), collapsed "Agent reasoning" panel |
+| `/lecture/[lectureId]` | 2 · **Main page**: the concepts "explode" over the page, coloured by mastery across all sessions; click to select, confirm → session. ★ button opens the saved questions (mistake book) |
+| `/session/[sessionId]` | 3 · **Review**: "A & B" title, AI summary, tutor chat, PDF button (split view with the slides for these concepts, draggable divider), Start quiz |
+| `/session/[sessionId]/quiz` | 4 · **Quiz**: back link, ☆ save on each question, ⚙ question type / difficulty picker, floating tutor, End → main page. "Agent reasoning" collapsed at the bottom |
 | `/session/[sessionId]/notes` | Notes, flashcards, Anki CSV export |
 
 ## Code layout
 
 ```
 app/            pages (Next.js App Router)
-components/     ConceptBlocks (tree + drag chips), ReviewBox, PdfPages, TutorChat, QuestionCard,
-                TracePanel, FlashcardDeck, StepBar, Markdown
+components/     ConceptCloud (exploded boxes), BookmarksDrawer, SplitPane, PdfPages, TutorChat,
+                FloatingChat, QuizSettings, QuestionCard, TracePanel, FlashcardDeck, StepBar, Markdown
 lib/types.ts    types copied from docs/api-contract.md
 lib/api.ts      the ONLY file that calls the backend; switches between mock and real
-lib/groups.ts   groups a flat concept list into topic blocks for the tree views
 lib/useLecture  loads a lecture's concepts (polls while processing)
 lib/mock/       demo lecture (C's CSCI 3151 M04 concept graph) and a mock agent loop
 ```

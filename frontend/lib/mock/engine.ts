@@ -11,7 +11,10 @@
 
 import type {
   AnswerResponse,
+  BookmarksResponse,
   ChatMessage,
+  LectureMastery,
+  PreferencesUpdate,
   ChatResponse,
   Citation,
   ConceptsResponse,
@@ -110,6 +113,7 @@ interface SessionData {
   issueCount: Record<string, number>;
   current: Question | null;
   answered: number;
+  answerLog: Record<string, { answer: string; correct: boolean }>;
   stack: string[]; // concepts waiting while we check one of their prerequisites
   trace: TraceEvent[];
   done: boolean;
@@ -117,6 +121,7 @@ interface SessionData {
 
 const lectures = new Map<string, number>(); // lecture id -> upload time
 const sessions = new Map<string, SessionData>();
+const bookmarks: { question_id: string; session_id: string; added_at: string }[] = [];
 let sessionCounter = 0;
 
 function addTrace(s: SessionData, tool: string, reason: string, summary: string) {
@@ -152,10 +157,17 @@ function issue(s: SessionData, conceptId: string): Question {
         ? [{ type: "short_answer", prompt: `In your own words, explain this idea from the lecture: ${c.name}.`, keywords }]
         : bank;
   }
-  const item = ordered[n % ordered.length];
+  // Question ids are stable across sessions (concept + bank index) so bookmarks can refer to
+  // them. The student's starred questions ("mistake book") come first, like the real backend.
+  const starred = new Set(bookmarks.map((b) => b.question_id));
+  const idOf = (i: number) => `${conceptId}__q${bank.indexOf(ordered[i]) + 1}`;
+  const order = [...ordered.keys()].sort((a, b) => Number(!starred.has(idOf(a))) - Number(!starred.has(idOf(b))));
+  const idx = order[n % order.length];
+  const item = ordered[idx];
   const harder = s.preferences.difficulty === "harder" ? " (apply it, don't just recall it)" : "";
+  const baseId = bank.includes(item) ? idOf(idx) : `${conceptId}__synth`;
   const question: Question = {
-    id: `${conceptId}__q${n + 1}`,
+    id: s.issued.has(baseId) ? `${baseId}__r${n}` : baseId, // never reuse an id within a session
     concept_id: conceptId,
     type: item.type,
     prompt: item.prompt + (item.type === "short_answer" ? harder : ""),
@@ -290,6 +302,7 @@ export async function startSession(lectureId: string, conceptIds: string[]): Pro
     issueCount: {},
     current: null,
     answered: 0,
+    answerLog: {},
     stack: [],
     trace: [],
     done: false,
@@ -419,6 +432,7 @@ export async function submitAnswer(sessionId: string, questionId: string, answer
   s.tested.add(cid);
   s.attempts[cid] = (s.attempts[cid] ?? 0) + 1;
   s.answered += 1;
+  s.answerLog[questionId] = { answer, correct };
   s.current = null;
   if (!correct) s.everWrong.add(cid);
 
@@ -565,4 +579,95 @@ export async function getFlashcardsCsv(sessionId: string): Promise<string> {
   const notes = await getNotes(sessionId);
   const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
   return notes.flashcards.map((f) => `${esc(f.front)},${esc(`${f.back} (slide p. ${f.page})`)}`).join("\n");
+}
+
+// ---------- Nov 12: main page colours, bookmarks, quiz settings, end button ----------
+
+export async function getLectureMastery(lectureId: string): Promise<LectureMastery> {
+  await sleep(150);
+  const latest: Record<string, number> = {};
+  const tested = new Set<string>();
+  let count = 0;
+  for (const s of sessions.values()) {
+    if (s.lectureId !== lectureId) continue;
+    count += 1;
+    for (const [cid, p] of Object.entries(s.p)) {
+      latest[cid] = p;
+      tested.add(cid);
+    }
+  }
+  return {
+    lecture_id: lectureId,
+    sessions: count,
+    mastery: MOCK_CONCEPTS.map((c) => ({
+      concept_id: c.id,
+      p_mastery: Math.round((latest[c.id] ?? PRIOR) * 100) / 100,
+      label: labelFor(latest[c.id] ?? PRIOR, tested.has(c.id)),
+    })),
+  };
+}
+
+function bookmarkList(lectureId: string): BookmarksResponse {
+  const items = [...bookmarks]
+    .reverse()
+    .map((b) => {
+      const s = sessions.get(b.session_id);
+      const issued = s?.issued.get(b.question_id);
+      if (!issued) return null;
+      const yourAnswer = s!.answerLog[b.question_id];
+      return {
+        question: issued.question,
+        concept_name: nameOf(issued.question.concept_id),
+        your_answer: yourAnswer?.answer ?? null,
+        correct: yourAnswer?.correct ?? null,
+        added_at: b.added_at,
+        session_id: b.session_id,
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+  return { lecture_id: lectureId, items };
+}
+
+export async function getBookmarks(lectureId: string): Promise<BookmarksResponse> {
+  await sleep(120);
+  return bookmarkList(lectureId);
+}
+
+export async function toggleBookmark(lectureId: string, questionId: string, sessionId: string): Promise<BookmarksResponse> {
+  await sleep(120);
+  const i = bookmarks.findIndex((b) => b.question_id === questionId);
+  if (i >= 0) bookmarks.splice(i, 1);
+  else bookmarks.push({ question_id: questionId, session_id: sessionId, added_at: new Date().toISOString() });
+  return bookmarkList(lectureId);
+}
+
+export async function setPreferences(sessionId: string, update: PreferencesUpdate): Promise<SessionState> {
+  await sleep(120);
+  const s = sessionOr404(sessionId);
+  const changed: string[] = [];
+  if (update.clear_question_type && s.preferences.question_type !== null) {
+    s.preferences.question_type = null;
+    changed.push("question_type=agent");
+  } else if (update.question_type && update.question_type !== s.preferences.question_type) {
+    s.preferences.question_type = update.question_type;
+    changed.push(`question_type=${update.question_type}`);
+  }
+  if (update.difficulty && update.difficulty !== s.preferences.difficulty) {
+    s.preferences.difficulty = update.difficulty;
+    changed.push(`difficulty=${update.difficulty}`);
+  }
+  if (changed.length) addTrace(s, "preferences", "The student changed the quiz settings", changed.join(", "));
+  return getSession(sessionId);
+}
+
+export async function finishSession(sessionId: string): Promise<SessionState> {
+  await sleep(150);
+  const s = sessionOr404(sessionId);
+  if (!s.done) {
+    s.done = true;
+    s.current = null;
+    s.stack = [];
+    addTrace(s, "finish", "The student ended the quiz early", `Stopped after ${s.answered} answers`);
+  }
+  return getSession(sessionId);
 }

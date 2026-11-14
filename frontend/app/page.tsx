@@ -108,11 +108,20 @@ export default function UploadPage() {
         {error && <p className="error">{error}</p>}
       </section>
 
-      <ol className="steps-hint">
-        <li><strong>Concepts</strong> — the lecture bursts into its concepts, coloured by what you know</li>
-        <li><strong>Pick</strong> — click the ones you&apos;re unsure about and confirm</li>
-        <li><strong>Quiz</strong> — the tutor tests you, finds the root cause of each mistake and re-teaches it</li>
-      </ol>
+      <div className="hint-stickies">
+        <div className="sticky-note s-yellow">
+          <b>1 · Concepts</b>
+          <span>the lecture bursts into its concepts, coloured by what you know</span>
+        </div>
+        <div className="sticky-note s-pink">
+          <b>2 · Pick</b>
+          <span>click the ones you&apos;re unsure about and confirm</span>
+        </div>
+        <div className="sticky-note s-green">
+          <b>3 · Quiz</b>
+          <span>the tutor tests you, finds the root cause of each mistake and re-teaches it</span>
+        </div>
+      </div>
     </div>
   );
 }

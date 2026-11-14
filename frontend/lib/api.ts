@@ -88,6 +88,14 @@ export function getPages(lectureId: string, conceptIds: string[] = []): Promise<
   return request<PagesResponse>(`/lectures/${enc(lectureId)}/pages${q}`);
 }
 
+// 2b. One slide as it looks in the PDF. Mock mode serves the demo lecture's pages (M04, rendered
+// to public/mock-pages/<page>.jpg); anything else falls back to the page's text.
+const MOCK_PAGE_IMAGES = 36;
+export function pageImageUrl(lectureId: string, page: number): string | null {
+  if (USE_MOCK) return page >= 1 && page <= MOCK_PAGE_IMAGES ? `/mock-pages/${page}.jpg` : null;
+  return `${BASE}/lectures/${enc(lectureId)}/pages/${page}/image`;
+}
+
 // 2a. Mastery across every session of the lecture (colours the concept boxes).
 export function getLectureMastery(lectureId: string): Promise<LectureMastery> {
   if (USE_MOCK) return mock.getLectureMastery(lectureId);

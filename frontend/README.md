@@ -36,7 +36,7 @@ components/     ConceptCloud (exploded boxes), BookmarksDrawer, SplitPane, PdfPa
 lib/types.ts    types copied from docs/api-contract.md
 lib/api.ts      the ONLY file that calls the backend; switches between mock and real
 lib/useLecture  loads a lecture's concepts (polls while processing)
-lib/mock/       demo lecture (C's CSCI 3151 M04 concept graph) and a mock agent loop
+lib/mock/       demo lecture (our own, see docs/demo-lecture/) and a mock agent loop
 ```
 
 `/api/*` requests are forwarded to `BACKEND_URL` by `next.config.mjs`, so the backend

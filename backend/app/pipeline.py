@@ -12,10 +12,15 @@ from app.concepts.extract import ExtractionError, extract_graph
 from app.config import Settings
 from app.models import Lecture, SlidePage
 from app.retrieval.merge import merge
-from app.retrieval.pdf_parser import Page, parse_pdf
+from app.retrieval.pdf_parser import Page, parse_pdf, render_page_images
 from app.store import Store
 
 log = logging.getLogger("lectureloop.pipeline")
+
+
+def page_image_dir(settings: Settings, lecture_id: str) -> Path:
+    """Where a lecture's rendered slide images live (GET /api/lectures/{id}/pages/{page}/image)."""
+    return settings.upload_dir / "pages" / lecture_id
 
 
 class LectureRejected(Exception):
@@ -68,6 +73,11 @@ def process_lecture(
         llm = llm or get_llm()
         _build(lecture, pdf_path, settings, llm, store)
         lecture.status = "ready"
+        try:
+            # keep a picture of each slide for the review page; the PDF itself is still deleted below
+            render_page_images(pdf_path, page_image_dir(settings, lecture.id), max_pages=settings.max_pages)
+        except Exception:
+            log.warning("lecture %s: could not render page images; the text view is used instead", lecture_id)
     except LectureRejected as e:
         lecture.status, lecture.error = "failed", str(e)
     except LLMError as e:
@@ -77,7 +87,7 @@ def process_lecture(
         log.exception("lecture %s failed", lecture_id)
         lecture.status, lecture.error = "failed", "Processing failed unexpectedly."
     finally:
-        pdf_path.unlink(missing_ok=True)  # keep extracted text only, not the uploaded file
+        pdf_path.unlink(missing_ok=True)  # keep the extracted text and page images, not the uploaded file
     lecture.timings["ready_s"] = round(time.perf_counter() - upload_started, 2)
     store.save_lecture(lecture)
     if lecture.status != "ready":

@@ -59,7 +59,7 @@ Errors: `413 file_too_large`, `415 unsupported_file_type` (wrong extension or no
 
 ```json
 { "lecture_id": "l_29564dcb37e0fb3b", "status": "ready", "error": null,
-  "title": "M04 Linear Regression", "page_count": 32,
+  "title": "Regression, risk & loss", "page_count": 36,
   "overview": "## markdown ...",
   "concepts": [ /* Concept */ ] }
 // status: "processing" | "ready" | "failed" — frontend polls until "ready" or "failed"
@@ -112,8 +112,12 @@ Errors: `404 lecture_not_found`, `404 question_not_found`.
 // concept_ids (comma-separated) keeps only the pages that teach those concepts; omit it for all pages
 ```
 
-Errors: `404 lecture_not_found`, `409 lecture_not_ready`. Page images are not served yet (the
-PDF is deleted after parsing); the frontend renders each page from its text.
+Errors: `404 lecture_not_found`, `409 lecture_not_ready`.
+
+`GET /api/lectures/{lecture_id}/pages/{page}/image` → the slide as it looks in the PDF (PNG,
+1200 px wide). Each page is rendered while the lecture is processed, before the uploaded PDF is
+deleted. Errors: `404 lecture_not_found`, `404 page_image_not_found` (out of range, or rendering
+failed). The frontend falls back to the page's text when the image is missing (and in mock mode).
 
 ## 3. Start a review session
 

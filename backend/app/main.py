@@ -11,7 +11,7 @@ from pathlib import Path
 
 from fastapi import BackgroundTasks, FastAPI, File, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 from starlette.exceptions import HTTPException
 
 from app.agent.chat import chat as tutor_chat
@@ -47,7 +47,7 @@ from app.models import (
     UploadResponse,
 )
 from app.output.notes import build_notes, flashcards_csv
-from app.pipeline import process_lecture
+from app.pipeline import page_image_dir, process_lecture
 from app.store import Store
 
 PAGE_TEXT_CHARS = 1200  # per page in GET /lectures/{id}/pages
@@ -170,6 +170,15 @@ def create_app(store: Store | None = None) -> FastAPI:
             if not wanted or wanted & set(taught.get(p.page, []))
         ]
         return PagesResponse(lecture_id=lecture.id, pages=pages)
+
+    @app.get("/api/lectures/{lecture_id}/pages/{page}/image")
+    def get_page_image(lecture_id: str, page: int):
+        """One slide as it looks in the PDF (PNG, rendered when the lecture was processed)."""
+        lecture = lecture_or_404(lecture_id)
+        path = page_image_dir(get_settings(), lecture.id) / f"{page}.png"
+        if page < 1 or not path.is_file():
+            raise ApiError(404, "page_image_not_found", f"No image for page {page} of lecture {lecture.id}.")
+        return FileResponse(path, media_type="image/png", headers={"Cache-Control": "private, max-age=86400"})
 
     @app.get("/api/lectures/{lecture_id}/mastery", response_model=LectureMastery)
     def get_lecture_mastery(lecture_id: str):

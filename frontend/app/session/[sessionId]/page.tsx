@@ -1,12 +1,14 @@
 "use client";
 
-// Page 3: the review page for the selected concepts. Title "A & B", the AI summary, the tutor
-// chat, "Start quiz" bottom right, and a PDF button that opens the slides in a split view.
+// Page 3: the review page for the selected concepts. Title "A & B", the AI summary top left,
+// the tutor chat below it, the slides fanned out on the right (click to open them as the PDF
+// pages in a split view), and "Start quiz" in the dock at the bottom.
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Markdown from "@/components/Markdown";
+import PdfFan from "@/components/PdfFan";
 import PdfPages from "@/components/PdfPages";
 import SplitPane from "@/components/SplitPane";
 import StepBar from "@/components/StepBar";
@@ -47,14 +49,14 @@ export default function ReviewPage() {
     };
   }, [sessionId]);
 
-  // load the slides the first time the PDF view opens
+  // load the slides up front: the fan on the right shows the first three
   useEffect(() => {
-    if (!showPdf || pages !== null || !state) return;
+    if (pages !== null || !state) return;
     api
       .getPages(state.lecture_id, state.concept_ids)
       .then((r) => setPages(r.pages))
       .catch((e) => setError(api.errorMessage(e)));
-  }, [showPdf, pages, state]);
+  }, [pages, state]);
 
   async function send(message: string) {
     try {
@@ -90,12 +92,14 @@ export default function ReviewPage() {
 
   const title = state.concept_ids.map(nameOf).join(" & ");
 
-  const main = (
-    <div className="review-main">
-      <section className="card">
-        <div className="eyebrow">✦ AI summary</div>
-        <Markdown>{state.scope_summary}</Markdown>
-      </section>
+  const summary = (
+    <section className="card review-summary">
+      <div className="eyebrow">✦ AI summary</div>
+      <Markdown>{state.scope_summary}</Markdown>
+    </section>
+  );
+  const chat = (
+    <div className="review-chat">
       <TutorChat
         title="Ask before you start"
         intro="Anything unclear? Ask me here. When you're ready, start the quiz and I'll test exactly these concepts."
@@ -115,32 +119,51 @@ export default function ReviewPage() {
           </Link>
           <h1>{title}</h1>
         </div>
-        <div className="row" style={{ marginTop: 0, alignItems: "center" }}>
-          <StepBar current={3} />
-          <button type="button" className={`btn ${showPdf ? "primary" : ""}`} onClick={() => setShowPdf((v) => !v)} aria-pressed={showPdf}>
-            📄 {showPdf ? "Hide PDF" : "PDF"}
-          </button>
-        </div>
+        <StepBar current={3} />
       </div>
 
       {error && <p className="error">{error}</p>}
 
       {showPdf ? (
         <SplitPane
-          initial={55}
-          left={main}
+          initial={52}
+          left={
+            <div className="review-left">
+              {summary}
+              {chat}
+            </div>
+          }
           right={
             <section className="card pdf-pane">
               <div className="card-head">
-                <h3>Slides for {state.concept_ids.length === 1 ? "this concept" : "these concepts"}</h3>
-                <span className="muted">{pages ? `${pages.length} pages` : ""}</span>
+                <div>
+                  <h3>Slides for {state.concept_ids.length === 1 ? "this concept" : "these concepts"}</h3>
+                  <span className="muted">{pages ? `${pages.length} pages` : ""}</span>
+                </div>
+                <button type="button" className="btn tiny" onClick={() => setShowPdf(false)}>
+                  Close ✕
+                </button>
               </div>
-              <PdfPages pages={pages ?? []} highlight={new Set(state.concept_ids)} nameOf={nameOf} loading={pages === null} />
+              <PdfPages
+                lectureId={state.lecture_id}
+                pages={pages ?? []}
+                highlight={new Set(state.concept_ids)}
+                nameOf={nameOf}
+                loading={pages === null}
+              />
             </section>
           }
         />
       ) : (
-        <div className="review-narrow">{main}</div>
+        <div className="review-grid">
+          <div className="review-left">
+            {summary}
+            {chat}
+          </div>
+          <div className="review-b">
+            <PdfFan lectureId={state.lecture_id} pages={pages} conceptCount={state.concept_ids.length} onOpen={() => setShowPdf(true)} />
+          </div>
+        </div>
       )}
 
       <div className="cta-row sticky-cta">

@@ -1,13 +1,13 @@
 :root {
-  --bg: #f4f5f8;
+  --bg: #e9eaed;
   --card: #ffffff;
   --text: #17202e;
   --muted: #5b6472;
-  --line: #e3e6ec;
+  --line: #e6e7eb;
   --line-strong: #d6dbe4;
-  --primary: #2a5bd7;
-  --primary-dark: #1d44a8;
-  --primary-soft: #e8eefc;
+  --primary: #17181c;
+  --primary-dark: #000000;
+  --primary-soft: #f3f59a;
   --ink: #17202e;
   --ok: #2f9e5b;
   --ok-bg: #e7f6ec;
@@ -15,7 +15,7 @@
   --bad-bg: #fde8e8;
   --warn: #d99a0b;
   --warn-bg: #fff4dc;
-  --radius: 14px;
+  --radius: 16px;
 }
 
 * { box-sizing: border-box; }
@@ -409,3 +409,327 @@ main { padding: 24px 32px 48px; max-width: 1440px; margin: 0 auto; }
 .floating-panel .card { margin-bottom: 0; box-shadow: 0 16px 40px rgba(23, 32, 46, 0.25); }
 .floating-close { position: absolute; top: 10px; right: 12px; z-index: 1; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line-strong); background: #fff; cursor: pointer; font: inherit; }
 .floating-panel .card-head { padding-right: 40px; }
+
+
+/* ======================= Nov 13 · spatial canvas ======================= */
+/* Light dotted canvas, paper sheets with soft shadows, pastel sticky notes in mono type,
+   a floating pill top-left and a dark dock at the bottom. */
+
+:root {
+  --mono: "SF Mono", ui-monospace, Menlo, "Cascadia Code", Consolas, monospace;
+  --paper-shadow: 0 1px 2px rgba(20, 22, 28, 0.05), 0 8px 24px rgba(20, 22, 28, 0.07), 0 28px 48px -18px rgba(20, 22, 28, 0.16);
+  --lift-shadow: 0 2px 4px rgba(20, 22, 28, 0.06), 0 16px 36px rgba(20, 22, 28, 0.12), 0 40px 70px -24px rgba(20, 22, 28, 0.22);
+  --hl: #f1f466;
+  --s-yellow: #fbf3b6;
+  --s-green: #d8f6cf;
+  --s-pink: #f7d7ea;
+  --s-blue: #d7e5ff;
+}
+
+html, body {
+  background-color: var(--bg);
+  background-image: radial-gradient(rgba(20, 22, 28, 0.09) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+  background-attachment: fixed;
+}
+main { padding: 96px 40px 140px; max-width: none; }
+@media (max-width: 720px) { main { padding: 84px 14px 130px; } }
+
+h1 { font-size: 2.3rem; letter-spacing: -0.035em; font-weight: 750; }
+h2, h3 { letter-spacing: -0.015em; }
+.eyebrow { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.04em; color: var(--muted); font-weight: 500; }
+.muted { color: #6b7180; }
+.hl { background: var(--hl); padding: 0 3px; border-radius: 2px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+
+/* old top bar → floating pill, top-left */
+.topbar { display: none; }
+.hud {
+  position: fixed; top: 16px; left: 16px; z-index: 30;
+  display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 12px;
+  background: rgba(255, 255, 255, 0.82); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-radius: 18px; box-shadow: var(--paper-shadow);
+}
+.hud-brand { font-weight: 700; color: var(--text); text-decoration: none; letter-spacing: -0.01em; }
+.hud-brand .brand-mark { display: inline-flex; width: 26px; height: 26px; align-items: center; justify-content: center; border-radius: 8px; background: var(--ink); color: #fff; margin-right: 4px; font-size: 0.9rem; }
+.hud-badge { font-family: var(--mono); font-size: 0.68rem; padding: 2px 8px; border-radius: 6px; background: var(--hl); color: #3b3a10; }
+
+/* every card is a sheet of paper on the canvas */
+.card { border: 0; border-radius: var(--radius); box-shadow: var(--paper-shadow); padding: 22px 24px; margin-bottom: 20px; }
+.stat, .bookmark, .flashcard, .pdf-sheet { border: 0; box-shadow: var(--paper-shadow); background: #fff; }
+.page { max-width: 1080px; }
+.page.wide { max-width: 1440px; }
+.narrow { margin-top: 32px; }
+
+.btn { border-radius: 12px; border-color: #dfe1e6; }
+.btn:hover:not(:disabled) { background: #fafafa; border-color: #c9ccd3; }
+.btn.primary { background: var(--ink); border-color: var(--ink); }
+.btn.primary:hover:not(:disabled) { background: #000; }
+.btn.tiny { font-family: var(--mono); font-size: 0.72rem; }
+.pill, .badge { font-family: var(--mono); font-weight: 500; border-radius: 6px; }
+
+/* step bar as a floating pill */
+.stepbar { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px); padding: 5px; border-radius: 14px; box-shadow: var(--paper-shadow); gap: 2px; }
+.step { background: transparent; font-family: var(--mono); font-size: 0.72rem; padding: 5px 10px; border-radius: 9px; }
+.step.now { background: var(--ink); }
+
+/* ---------- the concept board ---------- */
+.board { max-width: 1440px; margin: 0 auto; }
+.board-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap; margin-bottom: 8px; }
+.board-sub { display: block; font-family: var(--mono); font-size: 0.75rem; color: #6b7180; max-width: 620px; }
+.board-tools { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+
+.cloud { margin-top: 12px; }
+.cloud-box {
+  width: 220px; max-width: 44%; min-height: 150px; padding: 18px 18px 22px;
+  border: 0; border-radius: 14px; background: #fff;
+  display: flex; flex-direction: column; gap: 6px;
+  /* a second sheet peeking out behind = stacked paper */
+  box-shadow: 5px 6px 0 -1px #fff, 5px 6px 0 0 #e4e5ea, var(--paper-shadow);
+}
+.cloud-box:hover:not(:disabled) { transform: translate(-50%, -50%) rotate(0deg) scale(1.035); box-shadow: 5px 6px 0 -1px #fff, 5px 6px 0 0 #e4e5ea, var(--lift-shadow); z-index: 4; }
+.cloud-box.on { border: 0; box-shadow: 0 0 0 2px var(--ink), 5px 6px 0 -1px #fff, 5px 6px 0 0 #e4e5ea, var(--lift-shadow); z-index: 5; }
+.cloud-box.on .cloud-check { opacity: 1; transform: scale(1); }
+.cloud-check {
+  left: auto; right: 12px; top: 12px; width: 22px; height: 22px; border-radius: 999px; border: 0;
+  background: var(--ink); color: #fff; font-size: 12px; line-height: 22px; opacity: 0; transform: scale(0.6);
+  transition: opacity 0.15s, transform 0.15s;
+}
+.cloud-name { font-weight: 700; font-size: 0.95rem; line-height: 1.3; letter-spacing: -0.01em; padding-right: 20px; }
+.cloud-name .hl { background: transparent; padding: 0; }
+.cloud-box.on .cloud-name .hl { background: var(--hl); padding: 0 3px; }
+.cloud-meta { font-family: var(--mono); font-size: 0.66rem; color: #8a8f9b; margin-top: 0; }
+.cloud-body {
+  font-size: 0.72rem; line-height: 1.5; color: #5d6370;
+  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+}
+/* mastery colour now lives on the sticky note, not on the sheet */
+.cloud-box.m-not_mastered, .cloud-box.m-confused, .cloud-box.m-mastered { background: #fff; border: 0; }
+.cloud-box.m-not_mastered .cloud-meta, .cloud-box.m-confused .cloud-meta, .cloud-box.m-mastered .cloud-meta { color: #8a8f9b; }
+
+.cloud-sticky {
+  position: absolute; left: -14px; bottom: -16px; transform: rotate(var(--srot, -3deg));
+  display: inline-flex; align-items: center; gap: 6px; padding: 9px 12px 10px;
+  font-family: var(--mono); font-size: 0.68rem; color: #2a2c31; border-radius: 6px;
+  box-shadow: 0 2px 3px rgba(20, 22, 28, 0.06), 0 10px 18px -6px rgba(20, 22, 28, 0.2);
+}
+.cloud-sticky i { width: 8px; height: 8px; border-radius: 999px; background: #1c1d21; display: inline-block; }
+.s-not_mastered, .s-pink { background: var(--s-pink); }
+.s-confused, .s-green { background: var(--s-green); }
+.s-mastered, .s-blue { background: var(--s-blue); }
+.s-yellow { background: var(--s-yellow); }
+
+@media (max-width: 720px) { .cloud-box { width: 160px; min-height: 120px; padding: 14px; } .cloud-body { -webkit-line-clamp: 2; } }
+
+.legend { font-family: var(--mono); font-size: 0.68rem; gap: 10px; }
+.swatch { width: 12px; height: 12px; border: 0; border-radius: 3px; background: #fff; box-shadow: 0 0 0 1px #d5d7dd; }
+.swatch.m-not_mastered { background: var(--s-pink); border: 0; box-shadow: none; }
+.swatch.m-confused { background: var(--s-green); border: 0; box-shadow: none; }
+.swatch.m-mastered { background: var(--s-blue); border: 0; box-shadow: none; }
+
+/* ---------- the dark dock (bottom centre) ---------- */
+.dock, .sticky-cta, .confirm-bar {
+  position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 25;
+  display: flex; align-items: center; gap: 6px; max-width: calc(100vw - 32px);
+  padding: 8px; border: 0; border-radius: 22px; background: #141518; color: #fff;
+  box-shadow: 0 18px 40px rgba(10, 11, 14, 0.32); animation: dockin 0.3s ease both;
+}
+@keyframes dockin { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.dock-hint { font-family: var(--mono); font-size: 0.72rem; color: #a3a8b3; padding: 0 10px 0 12px; white-space: nowrap; }
+.dock-sep { width: 1px; height: 26px; background: #33353b; margin: 0 4px; }
+.dock-btn {
+  display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 14px;
+  border: 0; border-radius: 14px; background: transparent; color: #e9eaee;
+  font: inherit; font-size: 0.86rem; font-weight: 500; cursor: pointer; text-decoration: none; white-space: nowrap;
+}
+.dock-btn:hover:not(:disabled) { background: #26282d; }
+.dock-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.dock-btn.go { background: var(--hl); color: #1a1a10; font-weight: 650; }
+.dock-btn.go:hover:not(:disabled) { background: #e6e95a; }
+.dock-text { display: flex; flex-direction: column; min-width: 0; padding: 0 10px 0 12px; }
+.dock-text strong { font-size: 0.86rem; }
+.dock-text span { font-family: var(--mono); font-size: 0.68rem; color: #a3a8b3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46vw; }
+@media (max-width: 720px) { .dock-hint { display: none; } .dock-btn span { display: none; } }
+
+/* the review page's "Start quiz" bar becomes the dock too */
+.sticky-cta { padding: 8px 8px 8px 18px; gap: 14px; margin: 0; }
+.sticky-cta .muted { color: #a3a8b3; font-family: var(--mono); font-size: 0.72rem; }
+.sticky-cta .btn.primary, .confirm-bar .btn.primary { background: var(--hl); border: 0; color: #1a1a10; border-radius: 14px; min-height: 42px; font-size: 0.9rem; }
+.sticky-cta .btn.primary:hover:not(:disabled) { background: #e6e95a; }
+.confirm-bar .btn { background: transparent; border: 0; color: #e9eaee; }
+
+/* ---------- sticky notes on the upload page ---------- */
+.hint-stickies { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 28px; }
+@media (max-width: 720px) { .hint-stickies { grid-template-columns: 1fr; } }
+.sticky-note {
+  display: flex; flex-direction: column; gap: 6px; padding: 16px 16px 18px; border-radius: 6px;
+  font-family: var(--mono); font-size: 0.74rem; line-height: 1.55; color: #2a2c31;
+  box-shadow: 0 2px 3px rgba(20, 22, 28, 0.05), 0 12px 22px -8px rgba(20, 22, 28, 0.2);
+}
+.sticky-note:nth-child(1) { transform: rotate(-1.6deg); }
+.sticky-note:nth-child(2) { transform: rotate(1.2deg) translateY(6px); }
+.sticky-note:nth-child(3) { transform: rotate(-0.8deg); }
+.sticky-note b { font-size: 0.78rem; }
+.dropzone { border: 1.5px dashed #c8cbd2; border-radius: 14px; background: #fbfbfc; }
+.dropzone:hover, .dropzone.dragging { border-color: var(--ink); background: #fff; }
+
+/* ---------- review / quiz / notes details ---------- */
+.weak-box { background: var(--s-yellow); border-radius: 6px; font-family: var(--mono); font-size: 0.8rem; box-shadow: 0 8px 18px -10px rgba(20, 22, 28, 0.25); }
+.citation { background: var(--s-yellow); border-left: 0; border-radius: 6px; font-family: var(--mono); font-size: 0.8rem; }
+.markdown blockquote { background: var(--s-yellow); }
+.feedback.ok { border-left: 0; box-shadow: inset 4px 0 0 var(--ok), var(--paper-shadow); }
+.feedback.bad { border-left: 0; box-shadow: inset 4px 0 0 var(--bad), var(--paper-shadow); }
+.option { border-radius: 12px; }
+.option.selected { border-color: var(--ink); background: #fbfbe8; }
+.star.on { background: var(--hl); border-color: transparent; color: #1a1a10; }
+.tag.light.m-mastered { background: var(--s-blue); color: #1b2a4a; }
+.tag.light.m-confused { background: var(--s-green); color: #173a1f; }
+.tag.light.m-not_mastered { background: var(--s-pink); color: #4a1a35; }
+.tag.light.active { outline-color: var(--ink); }
+.bubble { background: #f3f3f5; }
+.avatar { background: var(--ink); color: #fff; }
+.flashcard.flipped { background: var(--s-yellow); }
+.flashcard-side { font-family: var(--mono); color: var(--muted); }
+.pdf-sheet.hit, .pdf-page.hit .pdf-page-paper { box-shadow: 0 0 0 2px var(--ink), var(--paper-shadow); }
+.drawer { border-radius: 20px 0 0 20px; }
+.drawer-backdrop { background: rgba(20, 22, 28, 0.25); backdrop-filter: blur(2px); }
+.floating { bottom: 22px; right: 22px; }
+.floating-btn { background: #141518; border-radius: 18px; }
+.quiz-page, .review-narrow { padding-bottom: 40px; }
+
+/* ---------- review page: summary top-left, chat lower-left, slides fanned on the right ---------- */
+.review-grid {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 440px); gap: 28px 40px;
+  grid-template-areas: "a b" "c b"; align-items: start;
+}
+.review-a { grid-area: a; min-width: 0; }
+.review-b { grid-area: b; position: sticky; top: 90px; }
+.review-c { grid-area: c; min-width: 0; }
+.review-grid .review-chat { max-width: 640px; margin-top: 24px; }
+.review-summary { margin-bottom: 0; }
+.review-main .review-chat { margin-top: 4px; }
+@media (max-width: 1000px) {
+  .review-grid { grid-template-columns: 1fr; grid-template-areas: "a" "b" "c"; }
+  .review-b { position: static; }
+  .review-grid .review-chat { max-width: none; margin-top: 0; }
+}
+
+.pdf-fan {
+  width: 100%; display: flex; flex-direction: column; align-items: center; gap: 14px;
+  padding: 18px 0 8px; border: 0; background: none; font: inherit; color: var(--text); cursor: pointer;
+}
+.fan-stack { position: relative; display: block; width: 380px; max-width: 100%; height: 250px; }
+.fan-card {
+  position: absolute; left: 50%; top: 36px; width: 220px; aspect-ratio: 4 / 3;
+  background: #fff; border: 7px solid #fff; border-radius: 22px; overflow: hidden;
+  box-shadow: 0 2px 4px rgba(20, 22, 28, 0.06), 0 18px 34px -10px rgba(20, 22, 28, 0.28);
+  transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+.fan-card .pdf-img { width: 100%; height: 100%; object-fit: cover; object-position: top; border-radius: 15px; display: block; }
+.fan-card .pdf-text { height: 100%; border-radius: 15px; background: #f6f6f8; }
+.fan-card.blank { background: linear-gradient(110deg, #f1f2f4 30%, #fafafb 50%, #f1f2f4 70%); background-size: 200% 100%; animation: shimmer 1.4s infinite linear; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+.fan-card:nth-child(1) { transform: translateX(-50%) translate(-92px, 16px) rotate(-11deg); z-index: 1; }
+.fan-card:nth-child(2) { transform: translateX(-50%) translate(0, -18px) rotate(-1deg); z-index: 2; }
+.fan-card:nth-child(3) { transform: translateX(-50%) translate(92px, 12px) rotate(10deg); z-index: 3; }
+.pdf-fan:hover .fan-card:nth-child(1) { transform: translateX(-50%) translate(-112px, 10px) rotate(-14deg); }
+.pdf-fan:hover .fan-card:nth-child(2) { transform: translateX(-50%) translate(0, -28px) rotate(-1deg); }
+.pdf-fan:hover .fan-card:nth-child(3) { transform: translateX(-50%) translate(112px, 6px) rotate(13deg); }
+.fan-caption { font-size: 1.05rem; font-weight: 500; letter-spacing: -0.01em; text-align: center; }
+.fan-cta {
+  display: inline-flex; align-items: center; height: 38px; padding: 0 18px; border-radius: 999px;
+  border: 1px solid #d6d8de; background: rgba(255, 255, 255, 0.7); font-size: 0.86rem;
+}
+.pdf-fan:hover .fan-cta { background: #fff; border-color: #b9bcc4; }
+@media (prefers-reduced-motion: reduce) { .fan-card { transition: none; } }
+
+/* ---------- PDF pane: the real pages ---------- */
+.pdf-pane { max-height: calc(100vh - 200px); }
+.pdf-sheet.image { padding: 0; aspect-ratio: auto; overflow: hidden; border-radius: 12px; }
+.pdf-sheet.image.hit { box-shadow: var(--paper-shadow); }
+.pdf-sheet.image .pdf-sheet-head { padding: 9px 14px; margin: 0; font-family: var(--mono); font-size: 0.68rem; border-bottom: 1px solid var(--line); }
+.pdf-sheet.image .pdf-sheet-head .hl { color: #2a2a10; }
+.pdf-img { display: block; width: 100%; height: auto; background: #fff; }
+.pdf-text { padding: 14px 16px; aspect-ratio: 16 / 10; overflow: hidden; }
+.pdf-text.small { padding: 10px 12px; aspect-ratio: auto; }
+.pdf-text.small .pdf-sheet-title { font-size: 0.72rem; margin-bottom: 4px; }
+.pdf-text.small .pdf-sheet-line { font-size: 0.55rem; line-height: 1.35; }
+
+/* review page, final layout: left column = summary on top, chat at the bottom of the window,
+   both the same width; slides fanned on the right */
+.review-grid { grid-template-columns: minmax(0, 1fr) minmax(320px, 440px); grid-template-areas: none; }
+.review-grid .review-b { grid-area: auto; }
+.review-left { display: flex; flex-direction: column; gap: 24px; min-width: 0; min-height: calc(100vh - 330px); }
+.review-left .review-chat { margin-top: auto; max-width: none; }
+.review-left .review-chat .card { margin: 0; }
+.review-left .chat-list { max-height: 220px; }
+@media (max-width: 1000px) {
+  .review-grid { grid-template-columns: 1fr; }
+  .review-left { min-height: 0; }
+  .review-left .review-chat { margin-top: 0; }
+}
+
+/* the fan scales with its column so the side cards never run off the screen */
+.fan-stack { width: 100%; max-width: 400px; height: auto; aspect-ratio: 400 / 260; }
+.fan-card { width: 52%; top: 14%; }
+.fan-card:nth-child(1) { transform: translateX(-50%) translate(-40%, 6%) rotate(-11deg); }
+.fan-card:nth-child(2) { transform: translateX(-50%) translate(0, -8%) rotate(-1deg); }
+.fan-card:nth-child(3) { transform: translateX(-50%) translate(40%, 5%) rotate(10deg); }
+.pdf-fan:hover .fan-card:nth-child(1) { transform: translateX(-50%) translate(-46%, 3%) rotate(-14deg); }
+.pdf-fan:hover .fan-card:nth-child(2) { transform: translateX(-50%) translate(0, -13%) rotate(-1deg); }
+.pdf-fan:hover .fan-card:nth-child(3) { transform: translateX(-50%) translate(46%, 2%) rotate(13deg); }
+.splitpane-left .review-left { padding-right: 6px; }
+
+/* ======================= Nov 14 · motion ======================= */
+:root { --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1); --ease-spring: cubic-bezier(0.2, 0.9, 0.3, 1.15); }
+
+/* page change: the whole page fades, then its pieces rise into place one after another */
+.route-in { animation: route-in 0.35s var(--ease-out) both; }
+@keyframes route-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes slide-in-right { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes pop { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
+
+.page-head, .board-head { animation: rise 0.5s var(--ease-out) both; }
+.page .card, .narrow > .card, .hint-stickies, .lead, .narrow > h1, .narrow > .eyebrow { animation: rise 0.55s var(--ease-out) both; animation-delay: 0.06s; }
+.narrow > h1 { animation-delay: 0.03s; }
+.narrow > .lead { animation-delay: 0.07s; }
+.narrow > .card { animation-delay: 0.11s; }
+.hint-stickies { animation-delay: 0.16s; }
+
+/* review page: summary, then chat, then the slide fan */
+.review-left > :nth-child(1), .review-left > :nth-child(1) .card { animation-delay: 0.06s; }
+.review-left > :nth-child(2) .card { animation-delay: 0.14s; }
+.review-b { animation: pop 0.6s var(--ease-spring) both; animation-delay: 0.18s; }
+.fan-card { animation: fan-deal 0.7s var(--ease-spring) both; }
+.fan-card:nth-child(1) { animation-delay: 0.22s; }
+.fan-card:nth-child(2) { animation-delay: 0.3s; }
+.fan-card:nth-child(3) { animation-delay: 0.38s; }
+@keyframes fan-deal { from { opacity: 0; margin-top: 40px; } to { opacity: 1; margin-top: 0; } }
+
+/* opening the PDF: the slides slide in from the right, pages one after another */
+.splitpane-right { animation: slide-in-right 0.45s var(--ease-out) both; }
+.pdf-stack > * { animation: rise 0.5s var(--ease-out) both; }
+.pdf-stack > :nth-child(1) { animation-delay: 0.12s; }
+.pdf-stack > :nth-child(2) { animation-delay: 0.19s; }
+.pdf-stack > :nth-child(3) { animation-delay: 0.26s; }
+.pdf-stack > :nth-child(n + 4) { animation-delay: 0.32s; }
+
+/* quiz: each new question and its feedback come in */
+.feedback, .done { animation: pop 0.4s var(--ease-out) both; }
+.chat-list .bubble-row { animation: rise 0.3s var(--ease-out) both; }
+
+/* concept board: the canvas settles in (the first-visit burst still plays on top) */
+.board > .cloud { animation: rise 0.6s var(--ease-out) both; animation-delay: 0.08s; }
+
+/* small things feel alive */
+.btn, .dock-btn, .step, .fan-cta, .star, .option, .tag { transition: background-color 0.18s, border-color 0.18s, color 0.18s, box-shadow 0.18s, transform 0.18s var(--ease-out); }
+.btn:active:not(:disabled), .dock-btn:active:not(:disabled) { transform: scale(0.97); }
+.option:hover { transform: translateX(2px); }
+
+/* the split view's divider: invisible until you go to drag it */
+.splitpane-divider::after { background: transparent; transition: background-color 0.2s; }
+.splitpane-divider:hover::after, .splitpane-divider:active::after { background: #c3c6cd; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-delay: 0s !important; transition-duration: 0.01ms !important; }
+}

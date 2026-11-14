@@ -1,12 +1,13 @@
 // Mock lecture used until the backend is ready.
-// Concepts come from C's real concept graph for CSCI 3151 M04 (linear regression),
-// trimmed to 10 concepts so the mastery map stays readable in the demo.
+// The demo lecture is our own: docs/demo-lecture/ (written by the LectureLoop team, CC BY 4.0).
+// Concepts come from C's concept graph for that lecture, trimmed to 10 concepts so the mastery map
+// stays readable in the demo. Page numbers match the slides in public/mock-pages/.
 // Questions, explanations and quotes are hand-written placeholders.
 
 import type { Concept, QuestionType } from "../types";
 
-export const MOCK_LECTURE_TITLE = "CSCI 3151 · M04 Linear Regression";
-export const MOCK_PAGE_COUNT = 32;
+export const MOCK_LECTURE_TITLE = "Regression, risk & loss (LectureLoop demo)";
+export const MOCK_PAGE_COUNT = 36;
 
 export const MOCK_CONCEPTS: Concept[] = [
   {
@@ -310,47 +311,47 @@ export const EXPLANATIONS: Record<string, { text: string; page: number; quote: s
   loss_function_and_metric: {
     text: "A loss function scores one prediction (for example, squared error) and is what training minimizes. An evaluation metric (for example, accuracy or RMSE) summarizes overall performance so you can judge whether the model is good enough. They can differ: accuracy is a useful metric but a poor loss because it is not differentiable.",
     page: 4,
-    quote: "Loss: score for one prediction, minimized during training.",
+    quote: "A metric only needs to be meaningful; a loss also needs to be easy to optimise.",
   },
   expected_risk: {
     text: "Expected risk is the average loss the model would incur over the true data-generating distribution. Because that distribution is unknown, we can never compute it exactly; we can only estimate it from data.",
     page: 5,
-    quote: "Expected risk averages the loss over the data distribution.",
+    quote: "What matters is the long-run average on crossings we have not seen yet.",
   },
   empirical_risk: {
     text: "Empirical risk replaces the unknown distribution with the training set: it is the average loss over the N training examples. Empirical risk minimization picks the model with the lowest training loss as a practical stand-in for minimizing expected risk.",
     page: 6,
-    quote: "Empirical risk: average loss over the training set.",
+    quote: "Average loss over the n crossings we actually logged.",
   },
   squared_vs_absolute_loss: {
     text: "Squared loss squares each residual, so an error of 4 costs 16 while absolute loss charges 4. That makes squared loss react much more strongly to large errors and outliers.",
     page: 8,
-    quote: "L2 penalizes large residuals quadratically.",
+    quote: "Squared loss (its average is MSE) punishes big misses much harder.",
   },
   linear_regression_1d: {
     text: "1D linear regression predicts y = w1·x + w0, where w1 is the slope and w0 the intercept. The residual for one example is the gap between the prediction and the true target.",
     page: 9,
-    quote: "Residual = prediction − target.",
+    quote: "Residual of example i: r = y − t. A good line keeps them short overall.",
   },
   regression_cost_function: {
     text: "The cost J(w1, w0) is the average squared residual over the training set. Training means searching for the weights that make J as small as possible: it is empirical risk with squared loss.",
     page: 10,
-    quote: "J(w1, w0): mean of squared residuals.",
+    quote: "J is just the empirical risk of the line, written as a function of its two weights.",
   },
   cost_surface_convexity: {
     text: "Plotted over the weights, the squared-loss cost forms a convex bowl. A convex function has no bad local minima: any minimum you reach is the global one, which is why gradient descent works reliably here.",
     page: 11,
-    quote: "The cost surface is a convex quadratic bowl.",
+    quote: "The best line on the left sits at the bottom of the bowl on the right.",
   },
   gradient_descent: {
     text: "Gradient descent repeatedly moves the weights a small step against the gradient: w ← w − α∇J(w). The learning rate α sets the step size; too large and the updates overshoot, too small and training is slow.",
     page: 17,
-    quote: "Step against the gradient, scaled by α.",
+    quote: "Walk downhill, one step at a time.",
   },
   multivariate_regression: {
     text: "With several inputs, stack the examples into a matrix X and append a column of ones (the bias trick) so the intercept becomes just another weight. Then all predictions are the single matrix product Xw.",
     page: 20,
-    quote: "Append a column of ones to absorb the bias.",
+    quote: "Bias trick: add a column of ones to X and fold b into w.",
   },
   normal_equation: {
     text: "Setting the gradient of the cost to zero gives the closed-form solution w* = (XᵀX)⁻¹Xᵀt. It needs no learning rate, but inverting XᵀX gets expensive when there are many features.",
@@ -367,34 +368,49 @@ export interface MockPage {
 }
 
 const PAGE_TITLES: Record<number, string> = {
-  1: "CSCI 3151 · Module 4: Linear regression",
-  2: "Learning outcomes",
-  3: "The supervised learning pipeline",
-  12: "Cost surface, continued",
-  13: "Residuals on a scatter plot",
-  14: "Residuals, continued",
-  15: "Convexity: why one bowl",
-  16: "Convexity, continued",
-  18: "Choosing the learning rate",
-  19: "Gradient descent in practice",
-  22: "Normal equation: cost of inversion",
-  23: "Nonlinear regression with feature maps",
-  24: "Underfitting and overfitting",
-  25: "Polynomial features, continued",
-  26: "Validation error vs complexity",
-  27: "Picking the sweet spot",
-  28: "0-1 loss and cross-entropy",
-  29: "Why regression is a bad classifier",
-  30: "Predictions outside [0, 1]",
-  31: "Towards logistic regression",
-  32: "Summary and next week",
+  1: "Regression, risk & loss",
+  2: "What you will be able to do",
+  3: "From a question to a model in service",
+  4: "Four ingredients: data, model, loss, metric",
+  5: "Expected risk: what we really care about",
+  6: "Empirical risk: the part we can compute",
+  7: "Risk in numbers: four logged crossings",
+  8: "Two losses for regression: L2 and L1",
+  9: "One input, one line",
+  10: "From squared loss to the cost J(w1, w0)",
+  11: "Two pictures of the same problem",
+  12: "The cost surface over (w1, w0)",
+  13: "The ferry log in Python",
+  14: "Fitting the line in Python",
+  15: "Slicing the bowl",
+  16: "Why one bowl? Quadratic and convex",
+  17: "Gradient descent, drawn",
+  18: "Step size matters",
+  19: "The update rule",
+  20: "Many inputs: matrix form and the bias trick",
+  21: "The normal equation",
+  22: "Closed form vs scikit-learn",
+  23: "Curves from a linear model: feature maps",
+  24: "Too simple, about right, too wiggly",
+  25: "Polynomial fits in scikit-learn",
+  26: "Seeing it against fresh data",
+  27: "Training vs validation error as the degree grows",
+  28: "Losses for yes/no outcomes",
+  29: "Predicting a late crossing with a regression line?",
+  30: "Trying the shortcut in Python",
+  31: "Where the shortcut breaks",
+  32: "A line versus an S-curve",
+  33: "The same recipe at scale",
+  34: "Check yourself",
+  35: "Where this goes next",
+  36: "Further reading and credits",
 };
 
 export const MOCK_PAGES: MockPage[] = Array.from({ length: MOCK_PAGE_COUNT }, (_, i) => {
   const page = i + 1;
   const concept = MOCK_CONCEPTS.find((c) => c.pages[0] === page);
   const owner = MOCK_CONCEPTS.find((c) => c.pages.includes(page));
-  const title = concept?.name ?? PAGE_TITLES[page] ?? (owner ? `${owner.name}, continued` : `Slide ${page}`);
+  const title = PAGE_TITLES[page] ?? concept?.name ?? (owner ? `${owner.name}, continued` : `Slide ${page}`);
   const body = owner?.summary ?? "Context slide: motivation, examples and transitions between topics.";
   return { page, title, text: `${title}\n${body}` };
 });

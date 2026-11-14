@@ -1,8 +1,9 @@
 "use client";
 
-// Page 2: the main page. The lecture's concepts "explode" over the page, coloured by how well
+// Page 2: the main page, a spatial canvas. The lecture's concepts "explode" over the page, coloured by how well
 // the student knows each one. Click the ones to review, confirm, and a session starts.
 
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import BookmarksDrawer from "@/components/BookmarksDrawer";
@@ -79,62 +80,64 @@ export default function ConceptsPage() {
   for (const c of concepts) counts[mastery[c.id]?.label ?? "untested"] += 1;
 
   return (
-    <div className="page wide">
-      <div className="page-head">
+    <div className="board">
+      <div className="board-head">
         <div>
           <div className="eyebrow">{lecture.page_count ?? "?"} slides · {concepts.length} concepts</div>
           <h1>{lecture.title || "Your lecture"}</h1>
+          <span className="board-sub">
+            {sessionsSoFar === 0
+              ? "Pick one sheet for a focused drill, several for a mixed review. Sticky notes appear as you quiz yourself."
+              : `${counts.mastered} mastered · ${counts.confused} getting there · ${counts.not_mastered} need work · ${counts.untested} not reviewed`}
+          </span>
         </div>
-        <div className="row" style={{ marginTop: 0, alignItems: "center" }}>
+        <div className="board-tools">
           <StepBar current={2} />
-          <button type="button" className={`btn ${bookmarks.length ? "primary" : ""}`} onClick={() => setDrawer(true)}>
-            ★ Saved{bookmarks.length ? ` (${bookmarks.length})` : ""}
-          </button>
+          <CloudLegend />
         </div>
       </div>
 
       {error && <p className="error">{error}</p>}
 
-      <section className="card cloud-card">
-        <div className="card-head">
-          <div>
-            <h3>Click the concepts you want to review</h3>
-            <span className="muted">
-              {sessionsSoFar === 0
-                ? "Pick one for a focused drill, several for a mixed review. Colours fill in as you quiz yourself."
-                : `${counts.mastered} mastered · ${counts.confused} getting there · ${counts.not_mastered} need work · ${counts.untested} not reviewed`}
-            </span>
-          </div>
-          <CloudLegend />
-        </div>
-        <ConceptCloud
-          concepts={concepts}
-          mastery={mastery}
-          selected={new Set(selected)}
-          onToggle={toggle}
-          disabled={starting}
-          animate={sessionsSoFar === 0}
-        />
-      </section>
+      <ConceptCloud
+        concepts={concepts}
+        mastery={mastery}
+        selected={new Set(selected)}
+        onToggle={toggle}
+        disabled={starting}
+        animate={sessionsSoFar === 0}
+      />
 
-      {selected.length > 0 && (
-        <div className="confirm-bar" role="dialog" aria-label="Confirm selection">
-          <div className="confirm-text">
-            <strong>
-              Review {selected.length} concept{selected.length === 1 ? "" : "s"}?
-            </strong>
-            <span className="muted">{selected.map(nameOf).join(" · ")}</span>
-          </div>
-          <div className="row" style={{ marginTop: 0 }}>
-            <button type="button" className="btn" disabled={starting} onClick={() => setSelected([])}>
+      <div className="dock" role="toolbar" aria-label="Concept actions">
+        {selected.length === 0 ? (
+          <>
+            <span className="dock-hint">Click the concepts you want to review</span>
+            <span className="dock-sep" aria-hidden="true" />
+            <button type="button" className="dock-btn" onClick={() => setDrawer(true)} title="Saved questions">
+              ★<span>Saved{bookmarks.length ? ` (${bookmarks.length})` : ""}</span>
+            </button>
+            <Link href="/" className="dock-btn" title="Upload another lecture">
+              ＋<span>New lecture</span>
+            </Link>
+          </>
+        ) : (
+          <>
+            <span className="dock-text">
+              <strong>
+                Review {selected.length} concept{selected.length === 1 ? "" : "s"}
+              </strong>
+              <span>{selected.map(nameOf).join(" · ")}</span>
+            </span>
+            <span className="dock-sep" aria-hidden="true" />
+            <button type="button" className="dock-btn" disabled={starting} onClick={() => setSelected([])}>
               Clear
             </button>
-            <button type="button" className="btn primary" disabled={starting} onClick={() => confirm(selected)}>
+            <button type="button" className="dock-btn go" disabled={starting} onClick={() => confirm(selected)}>
               {starting ? "Preparing…" : "Confirm →"}
             </button>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </div>
 
       <BookmarksDrawer
         open={drawer}

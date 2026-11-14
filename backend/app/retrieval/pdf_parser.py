@@ -74,3 +74,24 @@ def parse_pdf(pdf_path: str | Path) -> list[Page]:
         return pages
     finally:
         doc.close()
+
+
+PAGE_IMAGE_WIDTH = 1200  # px; wide enough to read a slide in the review page's PDF pane
+
+
+def render_page_images(pdf_path: str | Path, out_dir: Path, width: int = PAGE_IMAGE_WIDTH, max_pages: int | None = None) -> int:
+    """Render each page to out_dir/<page>.png (1-indexed) so the review page can show the slides
+    as they look in the PDF. Returns the number of pages written."""
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    doc = pymupdf.open(pdf_path)
+    try:
+        count = len(doc) if max_pages is None else min(len(doc), max_pages)
+        for index in range(count):
+            page = doc[index]
+            zoom = width / page.rect.width
+            pixmap = page.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom), alpha=False)
+            pixmap.save(out_dir / f"{index + 1}.png")
+        return count
+    finally:
+        doc.close()

@@ -18,6 +18,15 @@ def test_uploaded_pdf_is_deleted_after_parsing(client, lecture_id, tmp_path):
     assert list((tmp_path / "uploads").glob("*.pdf")) == []
 
 
+def test_page_images_are_served(client, lecture_id):
+    res = client.get(f"/api/lectures/{lecture_id}/pages/2/image")
+    assert res.status_code == 200
+    assert res.headers["content-type"] == "image/png"
+    assert res.content[:8] == b"\x89PNG\r\n\x1a\n"
+    assert client.get(f"/api/lectures/{lecture_id}/pages/999/image").status_code == 404
+    assert client.get("/api/lectures/l_missing/pages/1/image").status_code == 404
+
+
 def test_all_correct_covers_and_masters_every_concept(client, store, lecture_id):
     result = play(client, store, lecture_id)
     turns = result["turns"]

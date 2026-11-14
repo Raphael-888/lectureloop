@@ -12,12 +12,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <header className="topbar">
-          <Link href="/" className="brand">
+        <header className="hud">
+          <Link href="/" className="hud-brand" title="Review what you're unsure about. Find the root cause, not just the wrong answer.">
             <span className="brand-mark">↻</span> LectureLoop
           </Link>
-          <span className="tagline">Review what you&apos;re unsure about. Find the root cause, not just the wrong answer.</span>
-          {USE_MOCK && <span className="badge">Mock data</span>}
+          {USE_MOCK && <span className="hud-badge">mock data</span>}
         </header>
         <main>{children}</main>
       </body>

@@ -44,7 +44,34 @@ docs/       API contract, design decisions, evaluation results
 
 ## Getting started
 
-Setup instructions will be added once the stack is set up (see `frontend/README.md` and `backend/README.md`).
+Requires Python 3.11+ and Node.js 20+.
+
+**Quickest look (no backend, no key):** mock data and a mock agent loop run in the browser.
+
+```bash
+cd frontend
+npm install
+npm run dev          # http://localhost:3000, click "Try the demo lecture"
+```
+
+**Full stack:**
+
+```bash
+# terminal 1: backend
+cd backend
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env             # set LLM_PROVIDER, LLM_MODEL, LLM_API_KEY (or LLM_PROVIDER=offline: no key, demo only); loaded automatically
+uvicorn app.main:app --port 8000  # API docs at http://localhost:8000/docs
+
+# terminal 2: frontend
+cd frontend
+cp .env.example .env.local        # set NEXT_PUBLIC_USE_MOCK=false
+npm install && npm run dev
+```
+
+Tests: `cd backend && pytest -q`. More detail in `backend/README.md` and `frontend/README.md`;
+the API contract is `docs/api-contract.md`.
 
 ## Working together
 

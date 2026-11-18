@@ -204,11 +204,12 @@ def test_unreadable_pdf_fails_with_a_message(client):
 # ---------- selected-concept review (Nov 10 product decision) ----------
 
 
-def test_concepts_response_carries_title_pages_and_overview(client, lecture_id):
+def test_concepts_response_carries_title_and_pages(client, lecture_id):
     body = client.get(f"/api/lectures/{lecture_id}/concepts").json()
     assert body["title"] == "sorting"
     assert body["page_count"] == 6
-    assert "Comparison model" in body["overview"]
+    # `overview` stays in the schema but is no longer generated (docs/api-contract.md, "No lecture overview page")
+    assert body["overview"] == ""
 
 
 def test_pages_filtered_by_selected_concepts(client, lecture_id):
@@ -329,11 +330,11 @@ def test_preferences_endpoint_and_finish(client, store, lecture_id):
     assert r.status_code == 200, r.text
     assert r.json()["preferences"] == {"question_type": "short_answer", "difficulty": "harder"}
     r = client.patch(f"/api/sessions/{sid}/preferences", json={"clear_question_type": True})
-    assert r.json()["preferences"]["question_type"] is None
+    assert "question_type" not in r.json()["preferences"]  # cleared: the agent chooses again (None fields are omitted)
 
     r = client.post(f"/api/sessions/{sid}/finish")
     assert r.status_code == 200
-    assert r.json()["done"] is True and r.json()["current_question"] is None
+    assert r.json()["done"] is True and r.json().get("current_question") is None
     tools = [e["tool"] for e in client.get(f"/api/sessions/{sid}/trace").json()["events"]]
     assert tools[-1] == "finish" and "preferences" in tools
     # answering after the end is refused

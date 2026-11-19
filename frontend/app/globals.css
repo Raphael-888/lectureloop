@@ -739,3 +739,20 @@ h2, h3 { letter-spacing: -0.015em; }
 .page-head { position: relative; z-index: 12; }
 /* On phones the settings button sits on the left, so open the panel rightwards to stay on screen. */
 @media (max-width: 640px) { .menu-panel { left: 0; right: auto; } }
+
+/* ---------- prerequisite arrows on the concept canvas ---------- */
+.cloud-links { position: absolute; inset: 0; pointer-events: none; overflow: visible; z-index: 0; }
+.cloud-links.burst { animation: links-in 0.5s ease-out both; animation-delay: 0.75s; }
+@keyframes links-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .cloud-links.burst { animation: none; } }
+.cloud-link { fill: none; stroke-linecap: round; transition: opacity 0.15s, stroke 0.15s; }
+.cloud-link.idle { stroke: #b9bec9; stroke-width: 1.5; }
+.cloud-link.active { stroke: var(--ink); stroke-width: 2.25; }
+.cloud-link.faded { opacity: 0.25; }
+.cloud-arrowhead.idle path { fill: #b9bec9; }
+.cloud-arrowhead.active path { fill: var(--ink); }
+.legend-arrow { display: inline-block; width: 18px; height: 2px; background: #8a8f9b; position: relative; }
+.legend-arrow::after {
+  content: ""; position: absolute; right: -1px; top: -3px;
+  border-left: 6px solid #8a8f9b; border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+}
